@@ -267,12 +267,10 @@ struct wpa_sae_param_t {
 };
 
 struct rtw_owe_param_t {
-#ifdef CONFIG_OWE_SUPPORT
 	u16 group;
 	u8 pub_key[RTW_OWE_KEY_LEN];/*32(Temporarily support group 19 with 256 bit public key)*/
 	u8 pub_key_len;
 	u8 peer_mac[6];
-#endif
 };
 
 struct rtw_kvr_param_t {
@@ -634,6 +632,14 @@ typedef struct _rtw_csa_parm_t {
 	unsigned char bc_action_cnt; /* indicate the number of broadcast csa actions to send for each beacon interval. only valid when action_type = 1*/
 	ap_channel_switch_callback_t callback;
 } rtw_csa_parm_t;
+
+struct acs_mntr_rpt {
+	u16 meas_time; /*Measurements time on this channel, unit:ms*/
+	u16 busy_time; /*time that the primary channel was sensed busy, unit:ms*/
+	u16 tx_time; /*time spent transmitting frame on this channel, unit:ms */
+	s8 noise; /*unit: dbm*/
+	u8 channel;
+};
 
 //----------------------------
 /* ie format
@@ -1042,6 +1048,9 @@ struct wifi_user_conf {
 
 	/*STA mode will periodically send null packet to AP to keepalive, unit: second */
 	unsigned char keepalive_interval;
+
+	/*Automatic channel selection*/
+	unsigned char acs_en;
 };
 /** @} */
 #ifdef __cplusplus
