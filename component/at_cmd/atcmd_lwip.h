@@ -23,7 +23,7 @@
 #include "lwip_netconf.h"
 
 #define ENABLE_TCPIP_SSL                  0
-#define ATCMD_SSL_DEBUG_LEVEL             0
+#define ATCMD_SSL_DEBUG_LEVEL             RTK_LOG_DEBUG //0
 #define ENABLE_TCPIP_AUTOLINK             0
 
 #ifdef CONFIG_LWIP_LAYER
@@ -48,8 +48,6 @@
 
 #define ETH_MAX_MTU                       1500
 
-#define MAX_BUFFER                        LOG_SERVICE_BUFLEN
-
 #define ATCMD_LWIP_TT_MAX_DELAY_TIME_MS   20
 
 #define RECV_SELECT_TIMEOUT_SEC           0
@@ -57,9 +55,6 @@
 
 #define ATCMD_LWIP_CONN_STORE_MAX_NUM     1
 
-/* TODO */
-//#define at_print_data(data, size)         do{__rtl_memDump(data, size, NULL);}while(0)
-#define at_print_data(data, size)         do{UNUSED(data); UNUSED(size);}while(0)
 
 typedef struct _node {
 	int con_id;
@@ -109,7 +104,9 @@ typedef struct _atcmd_lwip_conf {
 } atcmd_lwip_conf;
 #endif /* ENABLE_TCPIP_AUTOLINK */
 
-extern void print_lwip_at(void);
+int atcmd_lwip_tt_proc(void);
+void print_lwip_at(void);
+void at_tcpip_init(void);
 
 extern rtos_sema_t atcmd_lwip_tt_sema;
 extern volatile int atcmd_lwip_tt_mode;

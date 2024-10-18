@@ -201,8 +201,8 @@ static uint8_t hci_platform_read_efuse(void)
 		OTP_Read8((HCI_PHY_EFUSE_OFFSET + i), (hci_phy_efuse + i));
 	}
 #if 0
-	BT_DUMPA("Read Logic Efuse:", hci_lgc_efuse, HCI_LGC_EFUSE_LEN);
-	BT_DUMPA("Read Phy Efuse:", hci_phy_efuse, HCI_PHY_EFUSE_LEN);
+	BT_DUMPA("Read Logic Efuse:\r\n", hci_lgc_efuse, HCI_LGC_EFUSE_LEN);
+	BT_DUMPA("Read Phy Efuse:\r\n", hci_phy_efuse, HCI_PHY_EFUSE_LEN);
 #endif
 	if (pbuf) {
 		osif_mem_free(pbuf);
@@ -218,6 +218,11 @@ void hci_platform_set_tx_power_gain_index(uint32_t index)
 	bt_manual_gain_index_br = (uint8_t)((index >> 8) & 0xFF);
 	bt_manual_gain_index_edr2m = (uint8_t)((index >> 16) & 0xFF);
 	bt_manual_gain_index_edr3m = (uint8_t)((index >> 24) & 0xFF);
+}
+
+void hci_platform_set_antenna(uint8_t ant)
+{
+	bt_ant_switch = ant;
 }
 
 static uint8_t hci_platform_parse_config(void)
@@ -434,7 +439,7 @@ bool rtk_bt_pre_enable(void)
 	return true;
 }
 
-bool rtk_bt_post_enable(void)
+void rtk_bt_post_enable(void)
 {
 	uint32_t lock_status;
 
@@ -452,8 +457,6 @@ bool rtk_bt_post_enable(void)
 		}
 	}
 #endif
-
-	return true;
 }
 
 uint8_t hci_platform_init(void)
@@ -493,14 +496,10 @@ uint8_t hci_platform_init(void)
 	return HCI_SUCCESS;
 }
 
-uint8_t hci_platform_deinit(void)
+void hci_platform_deinit(void)
 {
 	/* BT Controller Power Off */
-	if (!hci_is_mp_mode()) {
-		bt_power_off();
-	} else {
-		BT_LOGA("No need to power off BT controller in MP test\r\n");
-	}
+	bt_power_off();
 
 	/* UART Deinit */
 	hci_uart_close();
@@ -508,13 +507,11 @@ uint8_t hci_platform_deinit(void)
 	if (!CHECK_CFG_SW(CFG_SW_BT_FW_LOG)) {
 		rtk_bt_fw_log_close();
 	}
-
-	return HCI_SUCCESS;
 }
 
 uint8_t hci_platform_record_chipid(uint8_t chipid)
 {
-	if (chipid == 2 && hci_platform_get_rom_ver() == 3) {
+	if (chipid == 2 && hci_platform_get_rom_ver() >= 3) {
 		return 3;
 	}
 	return chipid;

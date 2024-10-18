@@ -76,6 +76,11 @@ int littlefs_open(const char *filename, const char *mode, vfs_file *finfo)
 
 	ret = lfs_file_open(&g_lfs, file, filename, mode_flag);
 	if (ret < 0) {
+		if (ret == LFS_ERR_NOENT) {
+			VFS_DBG(VFS_WARNING, "file is not exist");
+		} else {
+			VFS_DBG(VFS_ERROR, "Open file error %d", ret);
+		}
 		rtos_mem_free(file);
 		return ret;
 	}
@@ -313,7 +318,7 @@ int littlefs_mkdir(const char *pathname)
 {
 	int ret = 0;
 	ret = lfs_mkdir(&g_lfs, pathname);
-	if (ret < 0) {
+	if (ret < 0 && ret != LFS_ERR_EXIST) {
 		VFS_DBG(VFS_ERROR, "vfs-littlefs mkdir fail: %d", ret);
 	}
 	return ret;

@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <osif.h>
-#include <log_service.h>
+#include <atcmd_service.h>
 #include <bt_api_config.h>
 
 #include <rtk_bt_def.h>
@@ -29,13 +29,13 @@ static int atcmd_ble_mesh_scene_get(int argc, char **argv)
 	scene_get.app_key_index = str_to_int(argv[1]);
 	ret = rtk_bt_mesh_scene_get(&scene_get);
 	if (ret) {
-		AT_PRINTK("[%s] Get scene failed! reason: 0x%x", __func__, ret);
+		BT_LOGE("[%s] Get scene failed! reason: 0x%x\r\n", __func__, ret);
 		return -1;
 	}
 	return 0;
 #else
 	(void)argv;
-	AT_PRINTK("[ATBC] Platform not support scene client model.");
+	BT_LOGE("Platform not support scene client model.\r\n");
 	return -1;
 #endif
 }
@@ -52,13 +52,13 @@ static int atcmd_ble_mesh_scene_store(int argc, char **argv)
 	scene_store.app_key_index = str_to_int(argv[3]);
 	ret = rtk_bt_mesh_scene_store(&scene_store);
 	if (ret) {
-		AT_PRINTK("[%s] Store scene failed! reason: 0x%x", __func__, ret);
+		BT_LOGE("[%s] Store scene failed! reason: 0x%x\r\n", __func__, ret);
 		return -1;
 	}
 	return 0;
 #else
 	(void)argv;
-	AT_PRINTK("[ATBC] Platform not support scene client model.");
+	BT_LOGE("Platform not support scene client model.\r\n");
 	return -1;
 #endif
 }
@@ -81,13 +81,13 @@ static int atcmd_ble_mesh_scene_recall(int argc, char **argv)
 	}
 	ret = rtk_bt_mesh_scene_recall(&scene_recall);
 	if (ret) {
-		AT_PRINTK("[%s] Recall scene failed! reason: 0x%x", __func__, ret);
+		BT_LOGE("[%s] Recall scene failed! reason: 0x%x\r\n", __func__, ret);
 		return -1;
 	}
 	return 0;
 #else
 	(void)argv;
-	AT_PRINTK("[ATBC] Platform not support scene client model.");
+	BT_LOGE("Platform not support scene client model.\r\n");
 	return -1;
 #endif
 }
@@ -102,13 +102,13 @@ static int atcmd_ble_mesh_scene_register_get(int argc, char **argv)
 	scene_register_get.app_key_index = str_to_int(argv[1]);
 	ret = rtk_bt_mesh_scene_register_get(&scene_register_get);
 	if (ret) {
-		AT_PRINTK("[%s] Get scene register failed! reason: 0x%x", __func__, ret);
+		BT_LOGE("[%s] Get scene register failed! reason: 0x%x\r\n", __func__, ret);
 		return -1;
 	}
 	return 0;
 #else
 	(void)argv;
-	AT_PRINTK("[ATBC] Platform not support scene client model.");
+	BT_LOGE("Platform not support scene client model.\r\n");
 	return -1;
 #endif
 }
@@ -125,13 +125,13 @@ static int atcmd_ble_mesh_scene_delete(int argc, char **argv)
 	scene_delete.app_key_index = str_to_int(argv[3]);
 	ret = rtk_bt_mesh_scene_delete(&scene_delete);
 	if (ret) {
-		AT_PRINTK("[%s] Delete scene failed! reason: 0x%x", __func__, ret);
+		BT_LOGE("[%s] Delete scene failed! reason: 0x%x\r\n", __func__, ret);
 		return -1;
 	}
 	return 0;
 #else
 	(void)argv;
-	AT_PRINTK("[ATBC] Platform not support scene client model.");
+	BT_LOGE("Platform not support scene client model.\r\n");
 	return -1;
 #endif
 }
@@ -148,8 +148,7 @@ static const cmd_table_t mesh_scene_cmd_table[] = {
 
 int atcmd_bt_mesh_scene(int argc, char *argv[])
 {
-	atcmd_bt_excute(argc, argv, mesh_scene_cmd_table, "[ATBC][mesh_scene]");
-	return 0;
+	return atcmd_bt_excute(argc, argv, mesh_scene_cmd_table, "[AT+BLEMESHSCENE]");
 }
 
 #endif // end of RTK_BLE_MESH_SUPPORT

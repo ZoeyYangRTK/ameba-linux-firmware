@@ -141,31 +141,22 @@ int wifi_config_autoreconnect(__u8 mode);
 int wifi_get_autoreconnect(__u8 *mode);
 
 /**
- * @brief  Get reason code of latest disassociation or deauthentication.
- * @param[out]  reason_code: A pointer to the variable where the
- * 	reason code (rtw_connect_error_flag_t) will be written.
- * @return  RTW_SUCCESS or RTW ERROR.
- */
-int wifi_get_disconn_reason_code(unsigned short *reason_code);
-
-/**
  * @brief  Get the associated clients with SoftAP.
  * @param[out]  client_list_buffer: The location where the client
  * 	list will be stored.
  * @return  RTW_SUCCESS: The result is successfully got.
  * @return  RTW_ERROR: The result is not successfully got.
  */
-int wifi_get_associated_client_list(rtw_client_list_t	*client_list_buffer);
+int wifi_get_associated_client_list(struct _rtw_client_list_t	*client_list_buffer);
 
 /**
- * @brief  delete a STA
- * @param[in]  wlan_idx: the wlan interface index, should be SOFTAP_WLAN_INDEX.
+ * @brief  delete a STA for softap
  * @param[in]  hwaddr: the pointer to the MAC address of the STA
  * 	which will be deleted
  * @return  RTW_SUCCESS or RTW_ERROR
  * @note  this function should be used when operating as AP
  */
-int wifi_del_station(unsigned char wlan_idx, unsigned char *hwaddr);
+int wifi_del_station(unsigned char *hwaddr);
 
 /**
  * @brief  set channel
@@ -474,12 +465,52 @@ int wifi_csi_report(u32 buf_len, u8 *csi_buf, u32 *len);
 
 /**
  * @brief  for wifi speaker setting
- * @param[in]  mode: 0 for slave, 1 for master
- * @param[in]  thresh: unit 128us
- * @param[in]  relay_en: relay control
+ * @param[in]  set_type: wifi speaker setting type
+ * @param[in]  settings: A pointer to the params
+ * @note:
+ *      when set_type == SPEAKER_SET_INIT
+ *          mode: 0 for slave, 1 for master
+ *          thresh: unit 128us
+ *          relay_en: relay control
+ *      when set_type == SPEAKER_SET_LATCH_I2S_COUNT
+ *          port: 0 for select port 0's TSFT to trigger audio latch count, 1 for port 1
+ *          latch_period: 0 for trigger audio latch period is 4.096ms, 1 for 8.192ms
+ *      when set_type == SPEAKER_SET_TSF_TIMER
+ *          tsft: absolute value for twt timer, unit ms
+ *          port: 0 for select port 0's TSFT to trigger twt timer interrupt, 1 for port 1
  * @return  null.
  */
-void wifi_speaker_setting(u8 mode, u8 thresh, u8 relay_en);
+void wifi_speaker_setting(enum SPEAKER_SET_TYPE set_type, union speaker_set *settings);
+
+/**
+ * @brief  for user to set tx power
+ * 1. Currently will TX with the set power,  regardless of power by rate and power by limit.
+ * 2. Afterwards, it can be extended to specify rate, or power by limit needs to be considered.
+ * @param[in]  txpwr_ctrl_info: the pointer of rtw_tx_power_ctl_info_t
+ *    b_tx_pwr_force_enbale: 1 for enable, 0 for disable.
+ *    tx_pwr_force: unit 0.25dBm.
+ * @note:
+ *    For amebadplus, the power range varies for different channels or IC, the recommended power range is -2 ~ 23 dBm,
+ *    if exceeds the power range, the power may be inaccurate, and will be changed to the boundary value.
+ *    For amebasmart&amebalite, the recommended power range is -24 ~ 24 dBm.
+ *    For both, we suggest setting the power not to exceed the power by rate table.
+ * @return  RTW_SUCCESS or RTW_ERROR
+ */
+int wifi_set_tx_power(struct rtw_tx_power_ctl_info_t *txpwr_ctrl_info);
+
+/**
+ * @brief  for user to get tx power
+ * @param[in]  rate: phy rate
+ *    For the definition of phy rate, please refer to enum mgn_rate_type
+ *    CCK rate 1M,2M,5.5M,11M
+ *    OFDM rate 6M,9M,12M,18M,24M,36M,48M,54M
+ *    HT rate MCS0~MCS7
+ *    VHT rate MCS0~MCS8
+ *    HE rate MCS0~MCS9
+ * @param[out]  txpwr: the current tx power, unit 0.25dBm.
+ * @return  RTW_SUCCESS or RTW_ERROR
+ */
+int wifi_get_tx_power(u8 rate, s8 *txpwr);
 /**
   * @}
   */

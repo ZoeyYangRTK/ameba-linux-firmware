@@ -213,7 +213,6 @@ static SDIOHCFG_TypeDef sd_config = {
 #endif
 
 /* Private functions ---------------------------------------------------------*/
-
 #if USBD_MSC_RAM_DISK
 static u8 *usbd_msc_ram_disk_buf;
 
@@ -226,7 +225,7 @@ static int RAM_init(void)
 	if (usbd_msc_ram_disk_buf != NULL) {
 		cdev->is_ready = 1U;
 	} else {
-		RTK_LOGE(TAG, "fail to allocate RAM disk buffer");
+		RTK_LOGS(TAG, "[MSC] Alloc RAM disk buf fail");
 		result = SD_NODISK;
 	}
 
@@ -303,18 +302,16 @@ static void usbd_msc_sd_sema_deinit(void)
 static int usbd_msc_sd_init(void)
 {
 	SD_RESULT ret;
-	usbd_msc_dev_t *cdev = &usbd_msc_dev;
 
-	RTK_LOGI(TAG, "SD init\n");
+	RTK_LOGS(TAG, "[MSC] SD init\n");
 
 	usbd_msc_sd_sema_init();
 
 	ret = SD_Init(&sd_config);
 	if (ret == SD_OK) {
 		usbd_msc_sd_init_status = 1;
-		cdev->is_ready = 1U;
 	} else {
-		RTK_LOGE(TAG, "Fail to init SD: %d\n", ret);
+		RTK_LOGS(TAG, "[MSC] Fail to init SD: %d\n", ret);
 	}
 
 	return ret;
@@ -323,15 +320,13 @@ static int usbd_msc_sd_init(void)
 static int usbd_msc_sd_deinit(void)
 {
 	SD_RESULT ret;
-	usbd_msc_dev_t *cdev = &usbd_msc_dev;
 
-	RTK_LOGI(TAG, "SD deinit\n");
+	RTK_LOGS(TAG, "[MSC] SD deinit\n");
 
-	cdev->is_ready = 0U;
 	usbd_msc_sd_init_status = 0;
 	ret = SD_DeInit();
 	if (ret != SD_OK) {
-		RTK_LOGE(TAG, "Fail to deinit SD: %d\n", ret);
+		RTK_LOGS(TAG, "[MSC] Fail to deinit SD: %d\n", ret);
 	}
 
 	usbd_msc_sd_sema_deinit();
@@ -357,7 +352,7 @@ static int usbd_msc_sd_getcapacity(u32 *sector_count)
 	} while (++retry <= USBD_MSC_SD_ACCESS_RETRY);
 
 	if (ret != SD_OK) {
-		RTK_LOGE(TAG, "Fail to get SD capacity: %d\n", ret);
+		RTK_LOGS(TAG, "[MSC] Fail to get SD capacity: %d\n", ret);
 	}
 
 	return ret;
@@ -381,7 +376,7 @@ static int usbd_msc_sd_readblocks(u32 sector, u8 *data, u32 count)
 	} while (++retry <= USBD_MSC_SD_ACCESS_RETRY);
 
 	if (ret != SD_OK) {
-		RTK_LOGE(TAG, "Fail to read SD blocks: %d\n", ret);
+		RTK_LOGS(TAG, "[MSC] Fail to R SD blocks: %d\n", ret);
 	}
 
 	return ret;
@@ -405,7 +400,7 @@ static int usbd_msc_sd_writeblocks(u32 sector, const u8 *data, u32 count)
 	} while (++retry <= USBD_MSC_SD_ACCESS_RETRY);
 
 	if (ret != SD_OK) {
-		RTK_LOGE(TAG, "Fail to write SD blocks: %d\n", ret);
+		RTK_LOGS(TAG, "[MSC] Fail to W SD blocks: %d\n", ret);
 	}
 
 	return ret;
@@ -518,8 +513,8 @@ static int usbd_msc_setup(usb_dev_t *dev, usb_setup_req_t *req)
 	int ret = HAL_OK;
 	u16 ep_mps;
 
-	RTK_LOGD(TAG, "usbd_msc_setup bmRequestType=0x%02X bRequest=0x%02X wLength=0x%04X wValue=%x\n",
-			 req->bmRequestType, req->bRequest, req->wLength, req->wValue);
+	//RTK_LOGD(TAG, "SETUP: bmRequestType=0x%02x bRequest=0x%02x wLength=0x%04x wValue=%x\n",
+	//		 req->bmRequestType, req->bRequest, req->wLength, req->wValue);
 
 	switch (req->bmRequestType & USB_REQ_TYPE_MASK) {
 	/* Standard request */
@@ -650,7 +645,7 @@ static int usbd_msc_handle_ep_data_in(usb_dev_t *dev, u8 ep_addr, u8 status)
 			break;
 		}
 	} else {
-		RTK_LOGE(TAG, "EP%02X TX error: %d\n", ep_addr, status);
+		RTK_LOGS(TAG, "[MSC] EP%02x TX err: %d\n", ep_addr, status);
 	}
 
 	return HAL_OK;
@@ -747,13 +742,11 @@ static u8 *usbd_msc_get_descriptor(usb_dev_t *dev, usb_setup_req_t *req, usb_spe
 	switch ((req->wValue >> 8) & 0xFF) {
 
 	case USB_DESC_TYPE_DEVICE:
-		RTK_LOGD(TAG, "Get descriptor USB_DESC_TYPE_DEVICE\n");
 		buf = usbd_msc_dev_desc;
 		*len = sizeof(usbd_msc_dev_desc);
 		break;
 
 	case USB_DESC_TYPE_CONFIGURATION:
-		RTK_LOGD(TAG, "Get descriptor USB_DESC_TYPE_CONFIGURATION\n");
 		if (speed == USB_SPEED_HIGH) {
 			buf = usbd_msc_hs_config_desc;
 			*len = sizeof(usbd_msc_hs_config_desc);
@@ -764,13 +757,11 @@ static u8 *usbd_msc_get_descriptor(usb_dev_t *dev, usb_setup_req_t *req, usb_spe
 		break;
 
 	case USB_DESC_TYPE_DEVICE_QUALIFIER:
-		RTK_LOGD(TAG, "Get descriptor USB_DESC_TYPE_DEVICE_QUALIFIER\n");
 		buf = usbd_msc_device_qualifier_desc;
 		*len = sizeof(usbd_msc_device_qualifier_desc);
 		break;
 
 	case USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION:
-		RTK_LOGD(TAG, "Get descriptor USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION\n");
 		if (speed == USB_SPEED_HIGH) {
 			buf = usbd_msc_fs_config_desc;
 			*len = sizeof(usbd_msc_fs_config_desc);
@@ -786,17 +777,14 @@ static u8 *usbd_msc_get_descriptor(usb_dev_t *dev, usb_setup_req_t *req, usb_spe
 	case USB_DESC_TYPE_STRING:
 		switch (req->wValue & 0xFF) {
 		case USBD_IDX_LANGID_STR:
-			RTK_LOGD(TAG, "Get descriptor USBD_IDX_LANGID_STR\n");
 			buf = usbd_msc_lang_id_desc;
 			*len = sizeof(usbd_msc_lang_id_desc);
 			break;
 		case USBD_IDX_MFC_STR:
-			RTK_LOGD(TAG, "Get descriptor USBD_IDX_MFC_STR\n");
 			usbd_get_str_desc(USBD_MSC_MFG_STRING, desc, len);
 			buf = desc;
 			break;
 		case USBD_IDX_PRODUCT_STR:
-			RTK_LOGD(TAG, "Get descriptor USBD_IDX_PRODUCT_STR\n");
 			if (speed == USB_SPEED_HIGH) {
 				usbd_get_str_desc(USBD_MSC_PROD_HS_STRING, desc, len);
 			} else {
@@ -805,16 +793,15 @@ static u8 *usbd_msc_get_descriptor(usb_dev_t *dev, usb_setup_req_t *req, usb_spe
 			buf = desc;
 			break;
 		case USBD_IDX_SERIAL_STR:
-			RTK_LOGD(TAG, "Get descriptor USBD_IDX_SERIAL_STR\n");
 			usbd_get_str_desc(USBD_MSC_SN_STRING, desc, len);
 			buf = desc;
 			break;
 		case USBD_IDX_MS_OS_STR:
-			RTK_LOGD(TAG, "Get descriptor USBD_IDX_MS_OS_STR, not supported\n");
+			/*Not support*/
 			break;
 		/* Add customer string here */
 		default:
-			RTK_LOGW(TAG, "Get descriptor failed, invalid string index %d\n", req->wValue & 0xFF);
+			RTK_LOGS(TAG, "[MSC] Invalid str idx %d\n", req->wValue & 0xFF);
 			break;
 		}
 		break;
@@ -848,6 +835,39 @@ static void usbd_msc_status_changed(usb_dev_t *dev, u8 status)
 }
 
 /* Exported functions --------------------------------------------------------*/
+int usbd_msc_disk_init(void)
+{
+	SD_RESULT ret;
+
+#if USBD_MSC_RAM_DISK
+	ret = RAM_init();
+#else
+#if defined(CONFIG_AMEBASMART)
+	ret = usbd_msc_sd_init();
+#else
+	ret = SD_Init();
+#endif
+#endif
+
+	return ret;
+}
+
+int usbd_msc_disk_deinit(void)
+{
+	SD_RESULT ret;
+
+#if USBD_MSC_RAM_DISK
+	ret = RAM_deinit();
+#else
+#if defined(CONFIG_AMEBASMART)
+	ret = usbd_msc_sd_deinit();
+#else
+	ret = SD_DeInit();
+#endif
+#endif
+
+	return ret;
+}
 
 /**
   * @brief  Initialize MSC device
@@ -859,28 +879,22 @@ int usbd_msc_init(usbd_msc_cb_t *cb)
 	usbd_msc_disk_ops_t *ops = &cdev->disk_ops;
 	int ret = HAL_OK;
 
-	RTK_LOGI(TAG, "MSC init\n");
+	RTK_LOGS(TAG, "[MSC] Init\n");
 
 	if (cb != NULL) {
 		cdev->cb = cb;
 	}
 
 #if USBD_MSC_RAM_DISK
-	ops->disk_init = RAM_init;
-	ops->disk_deinit = RAM_deinit;
 	ops->disk_getcapacity = RAM_GetCapacity;
 	ops->disk_read = RAM_ReadBlocks;
 	ops->disk_write = RAM_WriteBlocks;
 #else
 #if defined(CONFIG_AMEBASMART)
-	ops->disk_init = usbd_msc_sd_init;
-	ops->disk_deinit = usbd_msc_sd_deinit;
 	ops->disk_getcapacity = usbd_msc_sd_getcapacity;
 	ops->disk_read = usbd_msc_sd_readblocks;
 	ops->disk_write = usbd_msc_sd_writeblocks;
 #else
-	ops->disk_init = SD_Init;
-	ops->disk_deinit = SD_DeInit;
 	ops->disk_getcapacity = SD_GetCapacity;
 	ops->disk_read = SD_ReadBlocks;
 	ops->disk_write = SD_WriteBlocks;
@@ -913,19 +927,10 @@ int usbd_msc_init(usbd_msc_cb_t *cb)
 
 	cdev->blkbits = USBD_MSC_BLK_BITS;
 	cdev->blksize = USBD_MSC_BLK_SIZE;
-	if (cdev->disk_ops.disk_init()) {
-		RTK_LOGE(TAG, "Disk init failed\n");
-		ret = HAL_ERR_HW;
-		goto disk_init_fail;
-	}
 
 	usbd_register_class(&usbd_msc_driver);
 
 	return HAL_OK;
-
-disk_init_fail:
-	usb_os_mfree(cdev->csw);
-	cdev->csw = NULL;
 
 csw_fail:
 	usb_os_mfree(cdev->cbw);
@@ -951,15 +956,11 @@ void usbd_msc_deinit(void)
 {
 	usbd_msc_dev_t *cdev = &usbd_msc_dev;
 
-	RTK_LOGI(TAG, "MSC deinit\n");
+	RTK_LOGS(TAG, "[MSC] Deinit\n");
 
 	cdev->is_ready = 0U;
 
 	usbd_unregister_class();
-
-	if (cdev->disk_ops.disk_deinit != NULL) {
-		cdev->disk_ops.disk_deinit();
-	}
 
 	if (cdev->csw != NULL) {
 		usb_os_mfree(cdev->csw);

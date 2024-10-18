@@ -3,33 +3,71 @@
 
 ifeq ($(CONFIG_WLAN),y)
 
+#common lib
+ifeq ($(CONFIG_AMEBADPLUS), y)
+ifeq ($(CONFIG_AS_INIC_NP), y)
+ifeq ($(CONFIG_KM4_AS_NP), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_com_sec.a
+else
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_common.a
+endif
+else
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_com_sec.a
+endif
+endif
+
+ifeq ($(CONFIG_AMEBASMART), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_com_sec.a
+endif
+
+ifeq ($(CONFIG_AMEBALITE), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_com_sec.a
+endif
+
+ifeq ($(CONFIG_AMEBAGREEN2), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_common.a
+endif
+
 # AP Link Library
 ifeq ($(CONFIG_AS_INIC_AP), y)
-LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_com_sec.a
 ifeq ($(CONFIG_MP_INCLUDED), y)
+ifeq ($(CONFIG_MP_SHRINK), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_ap_mp_shrink.a
+else
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_ap_mp.a
+endif
 else
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_ap.a
 endif
 ifneq ($(CONFIG_MP_SHRINK), y)
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wpa_lite.a
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wps.a
 endif
 # NP Link Library
 else ifeq ($(CONFIG_AS_INIC_NP), y)
-ifeq ($(CONFIG_AMEBADPLUS), y)
-LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_common.a
-else
-LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_com_sec.a
-endif
 ifeq ($(CONFIG_MP_INCLUDED), y)
+ifeq ($(CONFIG_MP_SHRINK), y)
+ifeq ($(CONFIG_INIC_INTF_SDIO), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_sdio_np_mp_shrink.a
+else ifeq ($(CONFIG_INIC_INTF_SPI), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_spi_np_mp_shrink.a
+else
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_np_mp_shrink.a
+endif
+else
 ifeq ($(CONFIG_INIC_INTF_SDIO), y)
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_sdio_np_mp.a
+else ifeq ($(CONFIG_INIC_INTF_SPI), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_spi_np_mp.a
 else
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_np_mp.a
+endif
 endif
 else
 ifeq ($(CONFIG_INIC_INTF_SDIO), y)
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_sdio_np.a
+else ifeq ($(CONFIG_INIC_INTF_SPI), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_spi_np.a
 else
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_inic_np.a
 endif
@@ -37,14 +75,30 @@ endif
 
 # Single Core Link Library
 else ifeq ($(CONFIG_SINGLE_CORE_WIFI), y)
-LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_com_sec.a
 ifneq ($(CONFIG_MP_SHRINK), y)
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wpa_lite.a
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wps.a
 endif
+ifeq ($(CONFIG_SDIO_BRIDGE), y)
 ifeq ($(CONFIG_MP_INCLUDED), y)
+ifeq ($(CONFIG_MP_SHRINK), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_sdio_bridge_mp_shrink.a
+else
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_sdio_bridge_mp.a
+endif
+else
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_sdio_bridge.a
+endif
+else
+ifeq ($(CONFIG_MP_INCLUDED), y)
+ifeq ($(CONFIG_MP_SHRINK), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_single_core_mp_shrink.a
+else
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_single_core_mp.a
+endif
 else
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_single_core.a
+endif
 endif
 endif
 
@@ -52,7 +106,7 @@ endif
 
 ifeq ($(CONFIG_AMEBADPLUS), y)
 ifeq ($(CONFIG_AS_INIC_AP), y)
-ifeq ($(CONFIG_WIFI_AUDIO),y)
+ifneq ($(CONFIG_WIFI_AUDIO)$(CONFIG_WFA_SRC),)
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_cast.a
 endif
 endif
@@ -60,7 +114,7 @@ endif
 
 ifeq ($(CONFIG_AMEBASMART), y)
 ifeq ($(CONFIG_AS_INIC_AP), y)
-ifeq ($(CONFIG_WIFI_AUDIO),y)
+ifneq ($(CONFIG_WIFI_AUDIO)$(CONFIG_WFA_SRC),)
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_wifi_cast.a
 endif
 endif
@@ -73,7 +127,8 @@ ifeq ($(CONFIG_WLAN), y)
 # build AP libs
 ifeq ($(CONFIG_AS_INIC_AP), y)
 ifneq ($(CONFIG_MP_SHRINK), y)
-	@+$(MAKE) -C $(WIFI_MAKE_DIR)/wpa_lite lib
+	@+$(MAKE) -C $(WIFI_MAKE_DIR)/wpa_supplicant/wpa_lite lib
+	@+$(MAKE) -C $(WIFI_MAKE_DIR)/wpa_supplicant/wps all
 endif
 	@+$(MAKE) -C $(WIFI_MAKE_DIR)/inic lib_ipc
 ifeq ($(CONFIG_AMEBASMART), y)
@@ -89,7 +144,8 @@ else ifeq ($(CONFIG_SINGLE_CORE_WIFI), y)
 	@+$(MAKE) -C $(WIFI_MAKE_DIR) lib
 
 ifneq ($(CONFIG_MP_SHRINK), y)
-	@+$(MAKE) -C $(WIFI_MAKE_DIR)/wpa_lite lib
+	@+$(MAKE) -C $(WIFI_MAKE_DIR)/wpa_supplicant/wpa_lite lib
+	@+$(MAKE) -C $(WIFI_MAKE_DIR)/wpa_supplicant/wps all
 endif
 endif
 
@@ -97,7 +153,7 @@ endif
 
 ifeq ($(CONFIG_AMEBADPLUS), y)
 ifeq ($(CONFIG_AS_INIC_AP), y)
-ifeq ($(CONFIG_WIFI_AUDIO), y)
+ifneq ($(CONFIG_WIFI_AUDIO)$(CONFIG_WFA_SRC),)
 	@+$(MAKE) -C $(WIFI_MAKE_DIR)/wifi_cast lib
 endif
 endif

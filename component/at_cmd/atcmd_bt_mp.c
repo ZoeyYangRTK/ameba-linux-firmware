@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "atcmd_bt_mp.h"
+#include "atcmd_service.h"
 #include "ameba_soc.h"
 #include "os_wrapper.h"
 
@@ -330,12 +330,10 @@ static int mp_ext2_bt_power(void **argv, int argc)
 
 	if (strcmp(argv[0], "on") == 0) {
 		MP_EXT2_PRINTF("BT power on.\n\r");
-		wifi_btcoex_set_pta(PTA_BT, PTA_HOST_BT, COMMON_ACTION);
 		rtk_bt_mp_power_on();
 	} else if (strcmp(argv[0], "off") == 0) {
 		MP_EXT2_PRINTF("BT power off.\n\r");
 		rtk_bt_mp_power_off();
-		wifi_btcoex_set_pta(PTA_WIFI, PTA_HOST_BT, COMMON_ACTION);
 	}
 
 	return 0;
@@ -388,10 +386,10 @@ void fATM2(void *arg)
 	cmd_cnt = sizeof(at_mp_ext2_items) / sizeof(at_mp_ext2_items[0]);
 	argc = parse_param(arg, argv);
 	if (argc == 1) {
-		_AT_PRINTK("\n");
+                RTK_LOGS(NOTAG, "\n");
 		MP_EXT2_PRINTF("Command usage :\n");
 		for (idx = 0; idx < cmd_cnt; idx++) {
-			_AT_PRINTK("%s", at_mp_ext2_items[idx].mp_ext_usage);
+			RTK_LOGS(NOTAG, "%s", at_mp_ext2_items[idx].mp_ext_usage);
 		}
 	} else {
 		for (idx = 0; idx < cmd_cnt; idx++) {
@@ -407,11 +405,7 @@ void fATM2(void *arg)
 
 //-------- AT MP commands ---------------------------------------------------------------
 log_item_t at_mp_items[] = {
-#if ATCMD_BT_CUT_DOWN
 	{"M2", fATM2, {NULL, NULL}},	// MP ext2 AT command
-#else
-	{"ATM2", fATM2, {NULL, NULL}},	// MP ext2 AT command
-#endif
 };
 
 /* TODO: A part of AT command "AT+LIST". */
@@ -421,12 +415,8 @@ void print_bt_mp_at(void)
 
 void at_mp_init(void)
 {
-	log_service_add_table(at_mp_items, sizeof(at_mp_items) / sizeof(at_mp_items[0]));
+	atcmd_service_add_table(at_mp_items, sizeof(at_mp_items) / sizeof(at_mp_items[0]));
 }
-
-#ifdef SUPPORT_LOG_SERVICE
-log_module_init(at_mp_init);
-#endif
 
 #endif /* #if CONFIG_ATCMD_MP */
 #endif /* #if CONFIG_BT */

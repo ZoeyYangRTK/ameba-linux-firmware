@@ -50,6 +50,7 @@ static uint32_t rtk_bt_br_hfp_evt_direct_calling_flag =
 	((1 << RTK_BT_HFP_EVT_SCO_DATA_IND) |
 	 (1 << RTK_BT_HFP_EVT_HF_BATTERY_IND) |
 	 (1 << RTK_BT_HFP_EVT_AG_INDICATORS_STATUS_REQ));
+static uint32_t rtk_bt_br_pbap_evt_direct_calling_flag = 0;
 static uint32_t rtk_bt_le_audio_evt_direct_calling_flag =
 	((1 << RTK_BT_LE_AUDIO_EVT_BASS_GET_PA_SYNC_PARAM_IND) |
 	 (1 << RTK_BT_LE_AUDIO_EVT_BASS_GET_BIG_SYNC_PARAM_IND) |
@@ -249,6 +250,8 @@ static void rtk_bt_evt_taskentry(void *ctx)
 
 	osif_sem_give(g_evt_task_sem);
 
+	osif_create_secure_context(BT_SECURE_STACK_SIZE);
+
 	while (true) {
 		if (osif_msg_recv(g_evt_queue, &pevt, BT_TIMEOUT_FOREVER)) {
 			/* Check msg */
@@ -266,8 +269,7 @@ static void rtk_bt_evt_taskentry(void *ctx)
 			rtk_bt_event_free(pevt);
 		}
 	}
-	// printf("[Bt evt task]: exit bt evt task\r\n");
-	API_PRINT("[BT evt task] bt evt task exit\r\n");
+	BT_LOGD("[BT evt task] bt evt task exit\r\n");
 	osif_sem_give(g_evt_task_sem);
 	osif_task_delete(NULL);
 }
@@ -298,12 +300,15 @@ uint16_t rtk_bt_evt_init(void)
 failed:
 	if (g_evt_task_hdl) {
 		osif_task_delete(g_evt_task_hdl);
+		g_evt_task_hdl = NULL;
 	}
 	if (g_evt_queue) {
 		osif_msg_queue_delete(g_evt_queue);
+		g_evt_queue = NULL;
 	}
 	if (g_evt_task_sem) {
 		osif_sem_delete(g_evt_task_sem);
+		g_evt_task_sem = NULL;
 	}
 
 	return RTK_BT_FAIL;
@@ -356,7 +361,7 @@ uint16_t rtk_bt_evt_register_callback(uint8_t group, rtk_bt_evt_cb_t cb)
 	bool b_is_br_mode = false;
 	bool b_is_common = false;
 
-	API_PRINT("--------------> rtk_bt_evt_register_callback: group = 0x%x \r\n", group);
+	BT_LOGD("--------------> rtk_bt_evt_register_callback: group = 0x%x \r\n", group);
 
 	if (group < RTK_BT_LE_GP_MAX) {
 		b_is_le_mode = true;
@@ -387,7 +392,7 @@ uint16_t rtk_bt_evt_unregister_callback(uint8_t group)
 	bool b_is_br_mode = false;
 	bool b_is_common = false;
 
-	API_PRINT("--------------> rtk_bt_evt_unregister_callback \r\n");
+	BT_LOGD("--------------> rtk_bt_evt_unregister_callback \r\n");
 	if (true != rtk_bt_is_enable()) {
 		return RTK_BT_ERR_NOT_READY;
 	}
@@ -484,6 +489,11 @@ bool rtk_bt_check_evt_cb_direct_calling(uint8_t group, uint8_t evt_code)
 		break;
 	case RTK_BT_BR_GP_HFP:
 		if (rtk_bt_br_hfp_evt_direct_calling_flag & (1 << evt_code)) {
+			ret = true;
+		}
+		break;
+	case RTK_BT_BR_GP_PBAP:
+		if (rtk_bt_br_pbap_evt_direct_calling_flag & (1 << evt_code)) {
 			ret = true;
 		}
 		break;

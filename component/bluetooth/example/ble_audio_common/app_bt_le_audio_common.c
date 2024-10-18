@@ -19,16 +19,12 @@
 #include <rtk_bt_common.h>
 #include <lc3_codec_entity.h>
 #include "app_bt_le_audio_common.h"
+#include <bt_utils.h>
+
 #if defined(CONFIG_BT_APP_DEBUG) && CONFIG_BT_APP_DEBUG
 void *g_app_printf_mtx;
 #endif
-//for iso data
-typedef struct {
-	uint8_t tx_iso_path_num;
-	uint8_t rx_iso_path_num;
-	void *mtx;
-	struct list_head head;
-} app_lea_iso_data_path_list_t;
+
 /* common broadcast source information parameter */
 app_bt_le_audio_bap_broadcast_source_info_t app_bap_bro_sour_info = {
 	.group_idx = 0xFF,
@@ -240,7 +236,11 @@ app_bt_bap_broadcast_source_param_cfg_t bap_broadcast_source_cfg = {
 #else
 	.cfg_codec_index = RTK_BT_LE_CODEC_CFG_ITEM_16_2,
 #endif
+#if (LEA_BIG_ISO_INTERVAL_CONFIG == ISO_INTERVAL_20_MS) || (LEA_BIG_ISO_INTERVAL_CONFIG == ISO_INTERVAL_30_MS)
+	.cfg_qos_type = RTK_BT_LE_QOS_CFG_BIS_HIG_RELIABILITY,
+#else
 	.cfg_qos_type = RTK_BT_LE_QOS_CFG_BIS_LOW_LATENCY,
+#endif
 	.cfg_encryption = false
 };
 
@@ -327,7 +327,13 @@ app_bt_bap_unicast_client_param_cfg_t bap_unicast_client_cfg = {
 	.codec_cfg = {0},
 	.prefer_qos = {0},
 	.cfg_codec_index = RTK_BT_LE_CODEC_CFG_ITEM_LC3_MAX,
+#if LEA_CIG_ISO_INTERVAL_CONFIG == ISO_INTERVAL_20_MS
+	.cfg_qos_type = RTK_BT_LE_QOS_CFG_CIS_HIG_RELIABILITY,
+#elif LEA_CIG_ISO_INTERVAL_CONFIG == ISO_INTERVAL_10_MS
 	.cfg_qos_type = RTK_BT_LE_QOS_CFG_CIS_LOW_LATENCY
+#else
+#error "now only support LEA_CIG_ISO_INTERVAL_CONFIG 10ms and 20ms"
+#endif
 };
 
 /* common unicast client parameters */
@@ -388,7 +394,7 @@ rtk_bt_le_audio_broadcast_source_create_big_t def_le_audio_broadcast_source_crea
 	/* Default value of TSPX_broadcast_code in PTS 8.0.0 is 8ED03323D1205E2D58191BF6285C3182 */
 };
 
-static app_lea_iso_data_path_list_t g_app_lea_iso_path_list = {0};
+app_lea_iso_data_path_list_t g_app_lea_iso_path_list = {0};
 static struct list_head g_app_lea_group_list_head = {0};
 static void *g_app_lea_group_list_mtx = NULL;
 static struct list_head g_app_lea_device_list_head = {0};
@@ -448,7 +454,7 @@ uint32_t app_bt_le_audio_translate_le_chnl_to_audio_chnl(uint32_t audio_channel_
 		}
 		le_chnl = le_chnl >> 2;
 	}
-	//printf("%s audio_chnl = 0x%x, audio_channel_allocation=0x%x\r\n",__func__,(unsigned int)audio_chnl,(unsigned int)audio_channel_allocation);
+	//BT_LOGA("%s audio_chnl = 0x%x, audio_channel_allocation=0x%x\r\n",__func__,(unsigned int)audio_chnl,(unsigned int)audio_channel_allocation);
 	return audio_chnl;
 }
 
@@ -461,7 +467,7 @@ uint8_t app_bt_le_audio_get_lea_chnl_num(uint32_t audio_channel_allocation)
 		channels ++ ;
 		audio_channel_allocation &= (audio_channel_allocation - 1);
 	}
-	//printf("%s audio_channel_allocation = 0x%x, channels=%d\r\n",__func__,(unsigned int)audio_channel_allocation,channels);
+	//BT_LOGA("%s audio_channel_allocation = 0x%x, channels=%d\r\n",__func__,(unsigned int)audio_channel_allocation,channels);
 	return channels;
 }
 
@@ -513,10 +519,10 @@ uint32_t app_bt_le_audio_translate_lea_samp_fre_to_audio_samp_rate(uint8_t sampl
 		sample_rate = 48000;
 		break;
 	default:
-		printf("%s unsupport sample_frequency 0x%x\r\n", __func__, sample_frequency);
+		BT_LOGE("%s unsupport sample_frequency 0x%x\r\n", __func__, sample_frequency);
 		break;
 	}
-	//printf("%s sample_frequency = 0x%x, sample_rate=%d\r\n",__func__,sample_frequency,(int)sample_rate);
+	//BT_LOGA("%s sample_frequency = 0x%x, sample_rate=%d\r\n",__func__,sample_frequency,(int)sample_rate);
 	return sample_rate;
 }
 
@@ -632,7 +638,7 @@ void app_bt_le_audio_update_adv(void *app_conf, uint8_t *device_name, uint8_t *a
 	gmap_role |= p_app_conf->gmap_role;
 	//set adv device name
 	uint8_t device_name_len = strlen((const char *)device_name);
-	//printf("[APP] device_name_len %d *adv_data_len %d\r\n", device_name_len,*adv_data_len);
+	//BT_LOGA("[APP] device_name_len %d *adv_data_len %d\r\n", device_name_len,*adv_data_len);
 	adv_data[idx] = device_name_len + 1;
 	idx++;
 	adv_data[idx] = RTK_BT_LE_GAP_ADTYPE_LOCAL_NAME_COMPLETE;
@@ -660,10 +666,14 @@ void app_bt_le_audio_update_adv(void *app_conf, uint8_t *device_name, uint8_t *a
 		idx++;
 		adv_data[idx] = RTK_BT_LE_ADV_TARGETED_ANNOUNCEMENT;
 		idx++;
-		LE_UINT16_TO_ARRAY(adv_data + idx, sink_available_contexts);
-		idx += 2;
-		LE_UINT16_TO_ARRAY(adv_data + idx, source_available_contexts);
-		idx += 2;
+		adv_data[idx] = LO_WORD(sink_available_contexts);
+		idx++;
+		adv_data[idx] = HI_WORD(sink_available_contexts);
+		idx++;
+		adv_data[idx] = LO_WORD(source_available_contexts);
+		idx++;
+		adv_data[idx] = HI_WORD(source_available_contexts);
+		idx++;
 		adv_data[idx] = 0; // metadata length
 		idx++;
 	}
@@ -920,6 +930,20 @@ uint16_t app_bt_le_audio_iso_data_path_add(uint8_t iso_mode, uint8_t iso_idx, ui
 			p_codec->sample_frequency, p_codec->codec_frame_blocks_per_sdu,
 			p_codec->octets_per_codec_frame, (unsigned int)p_codec->audio_channel_allocation);
 	if (path_direction == RTK_BLE_AUDIO_ISO_DATA_PATH_RX) {
+#if 0
+		uint8_t channels = 0;
+		uint32_t rate = 0;
+
+		rate = app_bt_le_audio_translate_lea_samp_fre_to_audio_samp_rate(p_codec->sample_frequency);
+		channels = app_bt_le_audio_get_lea_chnl_num(p_codec->audio_channel_allocation);
+		p_iso_path->track_hdl = app_bt_le_audio_track_add(p_codec);
+		p_iso_path->track_hdl->audio_sync_flag = true;
+		p_iso_path->track_hdl->sdu_interval = p_codec->frame_duration * 1000; // micro seconds
+		p_iso_path->track_hdl->pres_us = 20000;
+		p_iso_path->track_hdl->audio_delay_start_buff.size = RTK_BT_AUDIO_DELAY_START_BUFFER_COUNT * p_codec->frame_duration * (rate * channels * (16 / 8)) / 1000;
+		p_iso_path->track_hdl->audio_delay_start_buff.buff = (uint8_t *)osif_mem_alloc(RAM_TYPE_DATA_ON, p_iso_path->track_hdl->audio_delay_start_buff.size);
+		memset((void *)p_iso_path->track_hdl->audio_delay_start_buff.buff, 0, p_iso_path->track_hdl->audio_delay_start_buff.size);
+#endif
 		p_iso_path->track_hdl = app_bt_le_audio_track_add(p_codec);
 	}
 	if (path_direction == RTK_BLE_AUDIO_ISO_DATA_PATH_RX && p_iso_path->track_hdl != NULL) {
@@ -937,7 +961,7 @@ uint16_t app_bt_le_audio_iso_data_path_add(uint8_t iso_mode, uint8_t iso_idx, ui
 	}
 #endif
 	INIT_LIST_HEAD(&p_iso_path->iso_data_head);
-	//printf("[APP] %s p_iso_path 0x%p!\r\n", __func__,p_iso_path);
+	//BT_LOGA("[APP] %s p_iso_path 0x%08x!\r\n", __func__,p_iso_path);
 	osif_mutex_take(pmtx, BT_TIMEOUT_FOREVER);
 	list_add_tail(&p_iso_path->list, phead);/* insert list */
 	if (path_direction == RTK_BLE_AUDIO_ISO_DATA_PATH_TX) {
@@ -1035,7 +1059,7 @@ app_bt_le_audio_device_info_t *app_bt_le_audio_device_list_find(uint16_t conn_ha
 	struct list_head *iterator = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 	osif_mutex_take(pmtx, BT_TIMEOUT_FOREVER);
@@ -1082,7 +1106,7 @@ app_bt_le_audio_device_info_t *app_bt_le_audio_device_list_add(uint16_t conn_han
 	}
 	memset(p_device_info, 0, sizeof(app_bt_le_audio_device_info_t));
 	p_device_info->conn_handle = conn_handle;
-	//printf("[APP] %s p_group_info 0x%p p_device_info=%p!\r\n", __func__,p_group_info,p_device_info);
+	//BT_LOGA("[APP] %s p_group_info 0x%08x p_device_info=%08x!\r\n", __func__,p_group_info,p_device_info);
 	osif_mutex_take(pmtx, BT_TIMEOUT_FOREVER);
 	list_add_tail(&p_device_info->list, phead);/* insert list */
 	osif_mutex_give(pmtx);
@@ -1122,7 +1146,7 @@ uint16_t app_bt_le_audio_device_list_remove_all(void)
 	struct list_head *plist = NULL, *pnext = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 	//delete and free all group in group list
@@ -1144,12 +1168,12 @@ void app_bt_le_audio_group_list_init(void)
 	INIT_LIST_HEAD(&g_app_lea_group_list_head);
 	if (g_app_lea_group_list_mtx == NULL) {
 		osif_mutex_create(&g_app_lea_group_list_mtx);
-		//printf("[APP] %s g_app_lea_group_list_mtx = %p\r\n",__func__,g_app_lea_group_list_mtx);
+		//BT_LOGA("[APP] %s g_app_lea_group_list_mtx = %08x\r\n",__func__,g_app_lea_group_list_mtx);
 	}
 	INIT_LIST_HEAD(&g_app_lea_device_list_head);
 	if (g_app_lea_device_list_mtx == NULL) {
 		osif_mutex_create(&g_app_lea_device_list_mtx);
-		//printf("[APP] %s g_app_lea_device_list_mtx = %p\r\n",__func__,g_app_lea_device_list_mtx);
+		//BT_LOGA("[APP] %s g_app_lea_device_list_mtx = %08x\r\n",__func__,g_app_lea_device_list_mtx);
 	}
 }
 
@@ -1179,7 +1203,7 @@ uint8_t app_bt_le_audio_group_list_get_num(void)
 	uint8_t group_num = 0;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 	osif_mutex_take(pmtx, BT_TIMEOUT_FOREVER);
@@ -1205,7 +1229,7 @@ app_bt_le_audio_group_info_t *app_bt_le_audio_group_list_find(rtk_bt_le_audio_gr
 	void *pmtx = g_app_lea_group_list_mtx;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 	osif_mutex_take(pmtx, BT_TIMEOUT_FOREVER);
@@ -1238,7 +1262,7 @@ app_bt_le_audio_group_info_t *app_bt_le_audio_group_list_find_by_conn_handle(uin
 	struct list_head *device_iterator = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 	osif_mutex_take(pmtx, BT_TIMEOUT_FOREVER);
@@ -1284,7 +1308,7 @@ rtk_bt_le_audio_group_handle_t app_bt_le_audio_group_list_find_by_group_idx(uint
 	uint8_t group_num = 0, i = 0;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 	group_num = app_bt_le_audio_group_list_get_num();
@@ -1321,7 +1345,7 @@ app_bt_le_audio_device_info_t *app_bt_le_audio_group_list_find_dev_by_idx(rtk_bt
 
 	p_group_info = app_bt_le_audio_group_list_find(group_handle);
 	if (p_group_info == NULL) {
-		BT_LOGE("[APP] %s group_handle (%p) not find ,skip\r\n", __func__, group_handle);
+		BT_LOGE("[APP] %s group_handle (%08x) not find ,skip\r\n", __func__, group_handle);
 		return NULL;
 	}
 	if (dev_idx >= p_group_info->dev_num) {
@@ -1331,7 +1355,7 @@ app_bt_le_audio_device_info_t *app_bt_le_audio_group_list_find_dev_by_idx(rtk_bt
 	phead = &p_group_info->device_info_head;
 	pmtx = g_app_lea_device_list_mtx;
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 	osif_mutex_take(pmtx, BT_TIMEOUT_FOREVER);
@@ -1362,7 +1386,7 @@ app_bt_le_audio_device_info_t *app_bt_le_audio_group_list_find_dev_by_conn_handl
 	struct list_head *pdevice_head = NULL;
 	void *pdevice_mtx = NULL;
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 	osif_mutex_take(pmtx, BT_TIMEOUT_FOREVER);
@@ -1375,7 +1399,7 @@ app_bt_le_audio_device_info_t *app_bt_le_audio_group_list_find_dev_by_conn_handl
 			pdevice_head = &p_group_info->device_info_head;
 			pdevice_mtx = g_app_lea_device_list_mtx;
 			if (pdevice_head == NULL || pdevice_mtx == NULL) {
-				BT_LOGE("[APP] %s return fail: pdevice_head=%p,pdevice_mtx=%p\r\n", __func__, pdevice_head, pdevice_mtx);
+				BT_LOGE("[APP] %s return fail: pdevice_head=%08x,pdevice_mtx=%08x\r\n", __func__, pdevice_head, pdevice_mtx);
 				continue;
 			}
 			osif_mutex_take(pdevice_mtx, BT_TIMEOUT_FOREVER);
@@ -1411,12 +1435,12 @@ app_bt_le_audio_group_info_t *app_bt_le_audio_group_list_add_dev(rtk_bt_le_audio
 	void *p_device_mtx = NULL;
 
 	if (p_group_head == NULL || p_group_mtx == NULL) {
-		BT_LOGE("[APP] %s return fail: p_group_head=%p,pmtx=%p\r\n", __func__, p_group_head, p_group_mtx);
+		BT_LOGE("[APP] %s return fail: p_group_head=%08x,pmtx=%08x\r\n", __func__, p_group_head, p_group_mtx);
 		return NULL;
 	}
 	p_group_info = app_bt_le_audio_group_list_find(group_handle);
 	if (p_group_info) {
-		BT_LOGA("[APP] %s group_handle (%p) alreay in group_list, skip add action\r\n", __func__, group_handle);
+		BT_LOGA("[APP] %s group_handle (%08x) alreay in group_list, skip add action\r\n", __func__, group_handle);
 		goto ADD_DEV;
 	}
 	p_group_info = (app_bt_le_audio_group_info_t *)osif_mem_alloc(RAM_TYPE_DATA_ON, sizeof(app_bt_le_audio_group_info_t));
@@ -1430,13 +1454,13 @@ app_bt_le_audio_group_info_t *app_bt_le_audio_group_list_add_dev(rtk_bt_le_audio
 	osif_mutex_take(p_group_mtx, BT_TIMEOUT_FOREVER);
 	list_add_tail(&p_group_info->list, p_group_head);/* insert list */
 	osif_mutex_give(p_group_mtx);
-	BT_LOGD("[APP] add group_handle(%p) in group list ok \r\n", group_handle);
+	BT_LOGD("[APP] add group_handle(%08x) in group list ok \r\n", group_handle);
 
 ADD_DEV:
 	p_device_head = &p_group_info->device_info_head;
 	p_device_mtx = g_app_lea_device_list_mtx;
 	if (p_device_head == NULL || p_device_mtx == NULL) {
-		BT_LOGE("[APP] %s return fail: p_device_head=%p,p_device_mtx=%p\r\n", __func__, p_device_head, p_device_mtx);
+		BT_LOGE("[APP] %s return fail: p_device_head=%08x,p_device_mtx=%08x\r\n", __func__, p_device_head, p_device_mtx);
 		return NULL;
 	}
 	p_device_info = app_bt_le_audio_device_list_find(conn_handle);
@@ -1461,7 +1485,7 @@ ADD_DEV:
 	list_add_tail(&p_device_info->list, p_device_head);/* insert list */
 	p_group_info->dev_num++;
 	osif_mutex_give(p_device_mtx);
-	BT_LOGD("[APP] add device_handle(%p) in group_handle(%p) ok ,dev_num = %d \r\n", device_handle, group_handle, p_group_info->dev_num);
+	BT_LOGD("[APP] add device_handle(%08x) in group_handle(%08x) ok ,dev_num = %d \r\n", device_handle, group_handle, p_group_info->dev_num);
 
 	return p_group_info;
 }
@@ -1477,18 +1501,18 @@ uint16_t app_bt_le_audio_group_list_remove_dev_by_conn_handle(rtk_bt_le_audio_gr
 	void *pdevice_mtx = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 	p_group_info = app_bt_le_audio_group_list_find(group_handle);
 	if (p_group_info == NULL) {
-		BT_LOGE("[APP] %s group_handle (%p) not find ,skip\r\n", __func__, group_handle);
+		BT_LOGE("[APP] %s group_handle (%08x) not find ,skip\r\n", __func__, group_handle);
 		return RTK_BT_ERR_MISMATCH;
 	}
 	pdevice_head = &p_group_info->device_info_head;
 	pdevice_mtx = g_app_lea_device_list_mtx;
 	if (pdevice_head == NULL || pdevice_mtx == NULL) {
-		BT_LOGE("[APP] %s return: pdevice_head=%p,pdevice_mtx=%p\r\n", __func__, pdevice_head, pdevice_mtx);
+		BT_LOGE("[APP] %s return: pdevice_head=%08x,pdevice_mtx=%08x\r\n", __func__, pdevice_head, pdevice_mtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 	//delete and free all device info in this group
@@ -1512,7 +1536,7 @@ uint16_t app_bt_le_audio_group_list_remove_dev_by_conn_handle(rtk_bt_le_audio_gr
 		plist = pnext;
 	}
 	osif_mutex_give(pdevice_mtx);
-	BT_LOGD("[APP] remove conn_handle(%d) in group_handle(%p) ok, dev_num(%d)\r\n", conn_handle, group_handle, p_group_info->dev_num);
+	BT_LOGD("[APP] remove conn_handle(%d) in group_handle(%08x) ok, dev_num(%d)\r\n", conn_handle, group_handle, p_group_info->dev_num);
 
 	return RTK_BT_OK;
 }
@@ -1528,18 +1552,18 @@ uint16_t app_bt_le_audio_group_list_remove_dev(rtk_bt_le_audio_group_handle_t gr
 	void *pdevice_mtx = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 	p_group_info = app_bt_le_audio_group_list_find(group_handle);
 	if (p_group_info == NULL) {
-		BT_LOGE("[APP] %s group_handle (%p) not find ,skip\r\n", __func__, group_handle);
+		BT_LOGE("[APP] %s group_handle (%08x) not find ,skip\r\n", __func__, group_handle);
 		return RTK_BT_ERR_MISMATCH;
 	}
 	pdevice_head = &p_group_info->device_info_head;
 	pdevice_mtx = g_app_lea_device_list_mtx;
 	if (pdevice_head == NULL || pdevice_mtx == NULL) {
-		BT_LOGE("[APP] %s return: pdevice_head=%p,pdevice_mtx=%p\r\n", __func__, pdevice_head, pdevice_mtx);
+		BT_LOGE("[APP] %s return: pdevice_head=%08x,pdevice_mtx=%08x\r\n", __func__, pdevice_head, pdevice_mtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 	//delete and free all device info in this group
@@ -1563,7 +1587,7 @@ uint16_t app_bt_le_audio_group_list_remove_dev(rtk_bt_le_audio_group_handle_t gr
 		plist = pnext;
 	}
 	osif_mutex_give(pdevice_mtx);
-	BT_LOGD("[APP] remove device_handle(%p) in group_handle(%p) ok, dev_num(%d)\r\n", device_handle, group_handle, p_group_info->dev_num);
+	BT_LOGD("[APP] remove device_handle(%08x) in group_handle(%08x) ok, dev_num(%d)\r\n", device_handle, group_handle, p_group_info->dev_num);
 
 	return RTK_BT_OK;
 }
@@ -1580,7 +1604,7 @@ uint16_t app_bt_le_audio_group_list_remove(rtk_bt_le_audio_group_handle_t group_
 	uint8_t group_num = 0;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 	p_group_info = app_bt_le_audio_group_list_find(group_handle);
@@ -1588,7 +1612,7 @@ uint16_t app_bt_le_audio_group_list_remove(rtk_bt_le_audio_group_handle_t group_
 		pdevice_head = &p_group_info->device_info_head;
 		pdevice_mtx = g_app_lea_device_list_mtx;
 		if (pdevice_head == NULL || pdevice_mtx == NULL) {
-			BT_LOGE("[APP] %s return: pdevice_head=%p,pdevice_mtx=%p\r\n", __func__, pdevice_head, pdevice_mtx);
+			BT_LOGE("[APP] %s return: pdevice_head=%08x,pdevice_mtx=%08x\r\n", __func__, pdevice_head, pdevice_mtx);
 			return RTK_BT_ERR_PARAM_INVALID;
 		}
 		//delete and free all device info in this group
@@ -1614,7 +1638,7 @@ uint16_t app_bt_le_audio_group_list_remove(rtk_bt_le_audio_group_handle_t group_
 		list_del_init(&p_group_info->list);
 		osif_mutex_give(pmtx);
 		group_num = app_bt_le_audio_group_list_get_num();
-		BT_LOGD("[APP] remove group_handle(0x%p)ok, group_num(%d)\r\n", group_handle, group_num);
+		BT_LOGD("[APP] remove group_handle(0x%08x)ok, group_num(%d)\r\n", group_handle, group_num);
 		memset(p_group_info, 0, sizeof(app_bt_le_audio_group_info_t));
 		osif_mem_free(p_group_info);
 	}
@@ -1630,7 +1654,7 @@ uint16_t app_bt_le_audio_group_list_remove_all(void)
 	struct list_head *plist = NULL, *pnext = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 	//delete and free all group in group list
@@ -1664,7 +1688,7 @@ uint16_t app_bt_le_audio_new_device_add_in_group(uint16_t conn_handle, rtk_bt_le
 	//allocate group if group_handle is NULL
 	if (*p_group_handle == NULL) {
 		ret = rtk_bt_le_audio_group_allocate(&group_handle);
-		BT_LOGD("[APP] %s: allocate group_handle %s (group_handle=%p) \r\n", __func__, (RTK_BT_OK != ret) ? "fail" : "ok", group_handle);
+		BT_LOGD("[APP] %s: allocate group_handle %s (group_handle=%08x) \r\n", __func__, (RTK_BT_OK != ret) ? "fail" : "ok", group_handle);
 		if (ret != RTK_BT_OK || group_handle == NULL) {
 			return ret;
 		}
@@ -1678,7 +1702,7 @@ uint16_t app_bt_le_audio_new_device_add_in_group(uint16_t conn_handle, rtk_bt_le
 	//allocate device if device_handle is NULL
 	if (device_handle == NULL) {
 		ret = rtk_bt_le_audio_group_add_device(group_handle, conn_handle, &device_handle);
-		BT_LOGD("[APP] %s: add device in group %s (group_handle=%p,device_handle=%p) \r\n", __func__, (RTK_BT_OK != ret) ? "fail" : "ok", group_handle,
+		BT_LOGD("[APP] %s: add device in group %s (group_handle=%08x,device_handle=%08x) \r\n", __func__, (RTK_BT_OK != ret) ? "fail" : "ok", group_handle,
 				device_handle);
 		if (RTK_BT_OK != ret) {
 			return ret;
@@ -1704,7 +1728,7 @@ app_bt_le_audio_scan_dev_info_t *app_bt_le_audio_scan_dev_list_find(rtk_bt_le_ad
 	struct list_head *iterator = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 
@@ -1735,7 +1759,7 @@ app_bt_le_audio_scan_dev_info_t *app_bt_le_audio_scan_dev_list_find_by_idx(uint8
 	uint8_t i = 0;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 
@@ -1830,7 +1854,7 @@ uint16_t app_bt_le_audio_scan_dev_list_remove_all(void)
 	struct list_head *plist = NULL, *pnext = NULL;
 
 	if (phead == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p\r\n", __func__, phead);
+		BT_LOGE("[APP] %s return: phead=%08x\r\n", __func__, phead);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 
@@ -1858,7 +1882,7 @@ uint8_t app_bt_le_audio_bass_scan_dev_list_get_num(void)
 	uint8_t bass_scan_dev_num = 0;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 
@@ -1885,7 +1909,7 @@ app_bt_le_audio_bass_scan_dev_info_t *app_bt_le_audio_bass_scan_dev_list_find(rt
 	struct list_head *iterator = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 
@@ -1917,7 +1941,7 @@ app_bt_le_audio_bass_scan_dev_info_t *app_bt_le_audio_bass_scan_dev_list_find_by
 	uint8_t i = 0;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 
@@ -2005,7 +2029,7 @@ uint16_t app_bt_le_audio_bass_scan_dev_list_remove_all(void)
 	struct list_head *plist = NULL, *pnext = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 	//delete and free in scan_dev list
@@ -2032,7 +2056,7 @@ uint8_t app_bt_le_audio_sync_dev_list_get_num(void)
 	uint8_t bass_sync_dev_num = 0;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 	osif_mutex_take(pmtx, BT_TIMEOUT_FOREVER);
@@ -2058,7 +2082,7 @@ app_bt_le_audio_sync_dev_info_t *app_bt_le_audio_sync_dev_list_find(rtk_bt_le_au
 	struct list_head *iterator = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 
@@ -2090,7 +2114,7 @@ app_bt_le_audio_sync_dev_info_t *app_bt_le_audio_sync_dev_list_find_by_idx(uint8
 	uint8_t i = 0;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 
@@ -2120,7 +2144,7 @@ app_bt_le_audio_sync_dev_info_t *app_bt_le_audio_sync_dev_list_find_by_addr(rtk_
 	struct list_head *iterator = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 
@@ -2151,7 +2175,7 @@ app_bt_le_audio_sync_dev_info_t *app_bt_le_audio_sync_dev_list_find_by_source_id
 	struct list_head *iterator = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return fail: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return fail: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return NULL;
 	}
 
@@ -2188,7 +2212,7 @@ app_bt_le_audio_sync_dev_info_t *app_bt_le_audio_sync_dev_list_add(rtk_bt_le_aud
 	//check if the sync_handle in sync_handle list
 	p_sync_dev_info = app_bt_le_audio_sync_dev_list_find(sync_handle);
 	if (p_sync_dev_info) {
-		BT_LOGD("[APP] %s sync_handle(%p) alreay in sync_handle_list , skip add action\r\n", __func__, sync_handle);
+		BT_LOGD("[APP] %s sync_handle(%08x) alreay in sync_handle_list , skip add action\r\n", __func__, sync_handle);
 		return p_sync_dev_info;
 	}
 
@@ -2205,7 +2229,7 @@ app_bt_le_audio_sync_dev_info_t *app_bt_le_audio_sync_dev_list_add(rtk_bt_le_aud
 	list_add_tail(&p_sync_dev_info->list, phead);/* insert list */
 	osif_mutex_give(pmtx);
 
-	BT_LOGD("[APP] add sync_handle(%p) in sync_handle list ok\r\n", sync_handle);
+	BT_LOGD("[APP] add sync_handle(%08x) in sync_handle list ok\r\n", sync_handle);
 
 	return p_sync_dev_info;
 }
@@ -2217,7 +2241,7 @@ uint16_t app_bt_le_audio_sync_dev_list_remove(rtk_bt_le_audio_sync_handle_t sync
 
 	p_sync_dev_info = app_bt_le_audio_sync_dev_list_find(sync_handle);
 	if (p_sync_dev_info == NULL) {
-		BT_LOGD("[APP] %s sync_handle(%p) not find, skip remove action\r\n", __func__, sync_handle);
+		BT_LOGD("[APP] %s sync_handle(%08x) not find, skip remove action\r\n", __func__, sync_handle);
 		return RTK_BT_OK;
 	}
 
@@ -2228,7 +2252,7 @@ uint16_t app_bt_le_audio_sync_dev_list_remove(rtk_bt_le_audio_sync_handle_t sync
 	memset(p_sync_dev_info, 0, sizeof(app_bt_le_audio_sync_dev_info_t));
 	osif_mem_free(p_sync_dev_info);
 
-	BT_LOGD("[APP] remove sync_handle(%p) from sync_handle list ok\r\n", sync_handle);
+	BT_LOGD("[APP] remove sync_handle(%08x) from sync_handle list ok\r\n", sync_handle);
 
 	return RTK_BT_OK;
 }
@@ -2241,7 +2265,7 @@ uint16_t app_bt_le_audio_sync_dev_list_remove_all(void)
 	struct list_head *plist = NULL, *pnext = NULL;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 
@@ -2397,6 +2421,11 @@ uint16_t app_bt_le_audio_scan_report_handle(rtk_bt_le_ext_scan_res_ind_t *scan_r
 						scan_res_ind->addr.addr_val[5], scan_res_ind->addr.addr_val[4], scan_res_ind->addr.addr_val[3],
 						scan_res_ind->addr.addr_val[2], scan_res_ind->addr.addr_val[1], scan_res_ind->addr.addr_val[0],
 						scan_dev_info.local_name);
+				BT_AT_PRINT("+BLEBAP:unicast,client,escan,%02x:%02x:%02x:%02x:%02x:%02x,%s\r\n",
+							scan_res_ind->addr.addr_val[5], scan_res_ind->addr.addr_val[4], scan_res_ind->addr.addr_val[3],
+							scan_res_ind->addr.addr_val[2], scan_res_ind->addr.addr_val[1], scan_res_ind->addr.addr_val[0],
+							scan_dev_info.local_name);
+
 			}
 		}
 	}
@@ -2422,7 +2451,7 @@ uint16_t app_bt_le_audio_scan_report_show(void)
 	uint8_t scan_dev_num = 0;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 	BT_LOGA("[APP] show scan device list: \r\n");
@@ -2433,7 +2462,7 @@ uint16_t app_bt_le_audio_scan_report_show(void)
 		pnext = plist->next;
 		p_scan_dev_info = (app_bt_le_audio_scan_dev_info_t *)plist;
 		if (p_scan_dev_info) {
-			BT_LOGA("[APP] RemoteBd[%d] = [%02X:%02X:%02X:%02X:%02X:%02X], type %d\r\n", scan_dev_num,
+			BT_LOGA("[APP] RemoteBd[%d] = [%02x:%02x:%02x:%02x:%02x:%02x], type %d\r\n", scan_dev_num,
 					p_scan_dev_info->scan_res_ind.addr.addr_val[5], p_scan_dev_info->scan_res_ind.addr.addr_val[4], p_scan_dev_info->scan_res_ind.addr.addr_val[3],
 					p_scan_dev_info->scan_res_ind.addr.addr_val[2], p_scan_dev_info->scan_res_ind.addr.addr_val[1], p_scan_dev_info->scan_res_ind.addr.addr_val[0],
 					p_scan_dev_info->scan_res_ind.addr.type);
@@ -2487,6 +2516,12 @@ uint16_t app_bt_le_audio_bass_scan_report_handle(rtk_bt_le_ext_scan_res_ind_t *s
 					bscan_dev_info.broadcast_id[0],
 					bscan_dev_info.broadcast_id[1],
 					bscan_dev_info.broadcast_id[2]);
+			BT_AT_PRINT("+BLEBAP:broadcast,sink,escan,%s,%x,%x %x %x\r\n",
+						addr_str,
+						p_bscan_dev_info->adv_sid,
+						bscan_dev_info.broadcast_id[0],
+						bscan_dev_info.broadcast_id[1],
+						bscan_dev_info.broadcast_id[2]);
 		}
 		return RTK_BT_OK;
 	}
@@ -2503,7 +2538,7 @@ uint16_t app_bt_le_audio_bass_scan_report_show(void)
 	uint8_t bscan_dev_num = 0;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 	BT_LOGA("[APP] show bass scan device list: \r\n");
@@ -2514,7 +2549,7 @@ uint16_t app_bt_le_audio_bass_scan_report_show(void)
 		pnext = plist->next;
 		p_bscan_dev_info = (app_bt_le_audio_bass_scan_dev_info_t *)plist;
 		if (p_bscan_dev_info) {
-			BT_LOGA("[APP] RemoteBd[%d] = [%02X:%02X:%02X:%02X:%02X:%02X], type %d, broadcast_id [%02x:%02x:%02x]\r\n", bscan_dev_num,
+			BT_LOGA("[APP] RemoteBd[%d] = [%02x:%02x:%02x:%02x:%02x:%02x], type %d, broadcast_id [%02x:%02x:%02x]\r\n", bscan_dev_num,
 					p_bscan_dev_info->adv_addr.addr_val[5], p_bscan_dev_info->adv_addr.addr_val[4], p_bscan_dev_info->adv_addr.addr_val[3],
 					p_bscan_dev_info->adv_addr.addr_val[2], p_bscan_dev_info->adv_addr.addr_val[1], p_bscan_dev_info->adv_addr.addr_val[0],
 					p_bscan_dev_info->adv_addr.type,
@@ -2537,7 +2572,7 @@ uint16_t app_bt_le_audio_bass_pa_show(void)
 	uint8_t sync_dev_num = 0;
 
 	if (phead == NULL || pmtx == NULL) {
-		BT_LOGE("[APP] %s return: phead=%p,pmtx=%p\r\n", __func__, phead, pmtx);
+		BT_LOGE("[APP] %s return: phead=%08x,pmtx=%08x\r\n", __func__, phead, pmtx);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 	BT_LOGA("[APP] show BAAS sync device list: \r\n");
@@ -2548,7 +2583,7 @@ uint16_t app_bt_le_audio_bass_pa_show(void)
 		pnext = plist->next;
 		p_sync_dev_info = (app_bt_le_audio_sync_dev_info_t *)plist;
 		if (p_sync_dev_info) {
-			BT_LOGA("[APP] sync dev[%d] : [%02X:%02X:%02X:%02X:%02X:%02X], type %d, source_id %d, pa_sync_state %d, big_sync_state %d\r\n", sync_dev_num,
+			BT_LOGA("[APP] sync dev[%d] : [%02x:%02x:%02x:%02x:%02x:%02x], type %d, source_id %d, pa_sync_state %d, big_sync_state %d\r\n", sync_dev_num,
 					p_sync_dev_info->adv_addr.addr_val[5], p_sync_dev_info->adv_addr.addr_val[4], p_sync_dev_info->adv_addr.addr_val[3],
 					p_sync_dev_info->adv_addr.addr_val[2], p_sync_dev_info->adv_addr.addr_val[1], p_sync_dev_info->adv_addr.addr_val[0],
 					p_sync_dev_info->adv_addr.type, p_sync_dev_info->source_id, p_sync_dev_info->pa_sync_state, p_sync_dev_info->big_sync_state);
@@ -2569,8 +2604,14 @@ rtk_bt_audio_track_t *app_bt_le_audio_track_add(rtk_bt_le_audio_cfg_codec_t *p_c
 	uint8_t channels = 0;
 	uint32_t audio_chnl = 0;
 	uint32_t rate = 0;
+	uint32_t duration = 0;
 
 	rate = app_bt_le_audio_translate_lea_samp_fre_to_audio_samp_rate(p_codec->sample_frequency);
+	if (p_codec->frame_duration == RTK_BT_LE_FRAME_DURATION_CFG_10_MS) {
+		duration = 10000;
+	} else {
+		duration = 7500;
+	}
 #if 1
 	channels = app_bt_le_audio_get_lea_chnl_num(p_codec->audio_channel_allocation);
 	audio_chnl = app_bt_le_audio_translate_le_chnl_to_audio_chnl(p_codec->audio_channel_allocation);
@@ -2587,17 +2628,12 @@ rtk_bt_audio_track_t *app_bt_le_audio_track_add(rtk_bt_le_audio_cfg_codec_t *p_c
 #endif
 
 	return rtk_bt_audio_track_add(RTK_BT_AUDIO_CODEC_LC3, (float)left_volume, (float)right_volume,
-								  channels, rate, DEFAULT_PCM_BIT_WIDTH, NULL, true);
+								  channels, rate, BT_AUDIO_FORMAT_PCM_16_BIT, duration, NULL, true);
 }
 
 uint16_t app_bt_le_audio_track_remove(void *audio_track_hdl)
 {
 	return rtk_bt_audio_track_del(RTK_BT_AUDIO_CODEC_LC3, audio_track_hdl);
-}
-
-uint16_t app_bt_le_audio_track_recv_data(rtk_bt_audio_track_t *track_hdl, void *codec_entity, uint8_t *pdata, uint32_t len)
-{
-	return rtk_bt_audio_recvd_data_in(RTK_BT_AUDIO_CODEC_LC3, track_hdl, codec_entity, pdata, len);
 }
 
 rtk_bt_audio_record_t *app_bt_le_audio_record_add(rtk_bt_le_audio_cfg_codec_t *p_codec)
@@ -2808,7 +2844,7 @@ uint16_t app_bt_le_audio_bass_brs_char_init(app_bt_le_audio_device_info_t *p_dev
 						BT_LOGD("[APP] rtk_bt_le_audio_bass_get_brs_data num_subgroups %d, bis_info_size %d, bis_sync_state 0x%x, metadata_len %d\r\n",
 								brs_data.num_subgroups, brs_data.bis_info_size, (unsigned int)brs_data.p_cp_bis_info[0].bis_sync_state,
 								brs_data.p_cp_bis_info[0].metadata_len);
-						BT_DUMPD(__func__, brs_data.p_cp_bis_info[0].p_metadata, brs_data.p_cp_bis_info[0].metadata_len);
+						BT_DUMPD("", brs_data.p_cp_bis_info[0].p_metadata, brs_data.p_cp_bis_info[0].metadata_len);
 					}
 				}
 			}

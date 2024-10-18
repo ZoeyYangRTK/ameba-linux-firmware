@@ -31,11 +31,7 @@ endif
 ifeq (${V},2)
 CODE_ANA ?= 1
 endif
-ifeq (${V},3)
-DAILY_BUILD = 1
-else
-DAILY_BUILD = 0
-endif
+DAILY_BUILD = ${V}
 export ABS_ROOTDIR MAKE_INCLUDE_GEN HOSTCC ECHO Q
 
 
@@ -86,6 +82,10 @@ ifeq ($(CONFIG_TRUSTZONE), y)
 LINK_THIRD_APP_LIB += $(IMAGE_TARGET_FOLDER)/cmse_implib.lib
 endif
 
+ifeq ($(CONFIG_SPEEX_LIB),y)
+LINK_THIRD_APP_LIB += $(APP_LIB_DIR)/lib_speexdsp.a
+endif
+
 #add all app lib in this file
 include $(MAKE_INCLUDE_LIB)
 
@@ -109,6 +109,7 @@ bootloader: prebuild copy_ld_img1 make_subdirs_bootloader linker_loader
 flashloader: prebuild copy_ld_img1 make_subdirs_flashloader linker_loader copy_flashloader
 imgtool_flashloader:  prebuild copy_ld_floader make_subdirs_imgtool_flashloader linker_loader copy_imgtool_flashloader
 analysis_extract: code_extract
+toolchain: download_toolchain
 #*****************************************************************************#
 #                      RULES TO CREATE DIRECTORY                              #
 #*****************************************************************************#
@@ -281,27 +282,66 @@ endif
 	@#$(UTILITYDIR)/pad.sh $(IMAGE_TARGET_FOLDER)/km4_image2_all.bin 4096
 	$(Q)$(UTILITYDIR)/image_tool/imagetool.sh $(IMAGE_TARGET_FOLDER)/km4_image2_all.bin $(BUILD_TYPE);
 
-ifeq ($(CONFIG_UPGRADE_BOOTLOADER), y)
-	@if [ -f $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app.bin ]; then \
-		$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app.bin $(IMAGE_TARGET_FOLDER)/km4_boot_all.bin; \
-		$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_ns.bin $(IMAGE_TARGET_FOLDER)/km4_boot_all_ns.bin; \
+ifeq ($(CONFIG_FATFS_WITHIN_APP_IMG), y)
+	@if [ -f $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app.bin ] && [ -f $(BASEDIR)/amebasmart_gcc_project/fatfs.bin ]; then \
+		mv $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app.bin $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_tmp.bin; \
+		mv $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_ns.bin $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_ns_tmp.bin; \
+		sh $(UTILITYDIR)/pad.sh $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_tmp.bin 4096; \
+		sh $(UTILITYDIR)/pad.sh $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_ns_tmp.bin 4096; \
+		$(PREPENDTOOL) $(BASEDIR)/amebasmart_gcc_project/fatfs.bin  VFS1_FLASH_BASE_ADDR  $(AP_IMAGEDIR)/target_img2.map; \
+		cat $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_tmp.bin $(BASEDIR)/amebasmart_gcc_project/fatfs_prepend.bin > $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app.bin; \
+		cat $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_ns_tmp.bin $(BASEDIR)/amebasmart_gcc_project/fatfs_prepend.bin > $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_ns.bin; \
 	else \
-		if [ -f $(IMAGE_TARGET_FOLDER)/km0_km4_app.bin ]; then \
-			$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_app.bin $(IMAGE_TARGET_FOLDER)/km4_boot_all.bin; \
-			$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_app_ns.bin $(IMAGE_TARGET_FOLDER)/km4_boot_all_ns.bin; \
-		fi \
-	fi
-else
-	@if [ -f $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app.bin ]; then \
-		$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app.bin; \
-		$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_ns.bin; \
-	else \
-		if [ -f $(IMAGE_TARGET_FOLDER)/km0_km4_app.bin ]; then \
-			$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_app.bin; \
-			$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_app_ns.bin; \
+		if [ -f $(IMAGE_TARGET_FOLDER)/km0_km4_app.bin ] && [ -f $(BASEDIR)/amebasmart_gcc_project/fatfs.bin ]; then \
+			mv $(IMAGE_TARGET_FOLDER)/km0_km4_app.bin $(IMAGE_TARGET_FOLDER)/km0_km4_app_tmp.bin; \
+			mv $(IMAGE_TARGET_FOLDER)/km0_km4_app_ns.bin $(IMAGE_TARGET_FOLDER)/km0_km4_app_ns_tmp.bin; \
+			sh $(UTILITYDIR)/pad.sh $(IMAGE_TARGET_FOLDER)/km0_km4_app_tmp.bin 4096; \
+			sh $(UTILITYDIR)/pad.sh $(IMAGE_TARGET_FOLDER)/km0_km4_app_ns_tmp.bin 4096; \
+			$(PREPENDTOOL) $(BASEDIR)/amebasmart_gcc_project/fatfs.bin  VFS1_FLASH_BASE_ADDR  $(AP_IMAGEDIR)/target_img2.map; \
+			cat $(IMAGE_TARGET_FOLDER)/km0_km4_app_tmp.bin $(BASEDIR)/amebasmart_gcc_project/fatfs_prepend.bin > $(IMAGE_TARGET_FOLDER)/km0_km4_app.bin; \
+			cat $(IMAGE_TARGET_FOLDER)/km0_km4_app_ns_tmp.bin $(BASEDIR)/amebasmart_gcc_project/fatfs_prepend.bin > $(IMAGE_TARGET_FOLDER)/km0_km4_app_ns.bin; \
 		fi \
 	fi
 endif
+
+ifeq ($(CONFIG_COMPRESS_OTA_IMG), y)
+	@if [ -f $(IMAGE_TARGET_FOLDER)/km0_km4_app.bin ]; then \
+		$(COMPRESSTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_app.bin; \
+		$(COMPRESSTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_app_ns.bin; \
+		$(COPY) $(IMAGE_TARGET_FOLDER)/km0_km4_app_compress.bin $(IMAGE_TARGET_FOLDER)/tmp_app.bin; \
+		$(COPY) $(IMAGE_TARGET_FOLDER)/km0_km4_app_ns_compress.bin $(IMAGE_TARGET_FOLDER)/tmp_app_ns.bin; \
+	else \
+		if [ -f $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app.bin ]; then \
+			$(COMPRESSTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app.bin; \
+			$(COMPRESSTOOL) $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_ns.bin; \
+			$(COPY) $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_compress.bin $(IMAGE_TARGET_FOLDER)/tmp_app.bin; \
+			$(COPY) $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_ns_compress.bin $(IMAGE_TARGET_FOLDER)/tmp_app_ns.bin; \
+		fi \
+	fi
+else
+	@if [ -f $(IMAGE_TARGET_FOLDER)/km0_km4_app.bin ]; then \
+		$(COPY) $(IMAGE_TARGET_FOLDER)/km0_km4_app.bin $(IMAGE_TARGET_FOLDER)/tmp_app.bin; \
+		$(COPY) $(IMAGE_TARGET_FOLDER)/km0_km4_app_ns.bin $(IMAGE_TARGET_FOLDER)/tmp_app_ns.bin; \
+	else \
+		if [ -f $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app.bin ]; then \
+			$(COPY) $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app.bin $(IMAGE_TARGET_FOLDER)/tmp_app.bin; \
+			$(COPY) $(IMAGE_TARGET_FOLDER)/km0_km4_ca32_app_ns.bin $(IMAGE_TARGET_FOLDER)/tmp_app_ns.bin; \
+		fi \
+	fi
+endif
+ifeq ($(CONFIG_UPGRADE_BOOTLOADER), y)
+	@if [ -f $(IMAGE_TARGET_FOLDER)/tmp_app.bin ]; then \
+		$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/tmp_app.bin $(IMAGE_TARGET_FOLDER)/km4_boot_all.bin; \
+		$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/tmp_app_ns.bin $(IMAGE_TARGET_FOLDER)/km4_boot_all_ns.bin; \
+	fi
+else
+	@if [ -f $(IMAGE_TARGET_FOLDER)/tmp_app.bin ]; then \
+		$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/tmp_app.bin; \
+		$(OTAPREPENDTOOL) $(IMAGE_TARGET_FOLDER)/tmp_app_ns.bin; \
+	fi
+endif
+	@rm -f $(IMAGE_TARGET_FOLDER)/tmp_app.bin
+	@rm -f $(IMAGE_TARGET_FOLDER)/tmp_app_ns.bin
 	@echo "========== Image manipulating end =========="
 
 linker_loader:
@@ -348,18 +388,14 @@ linker_loader:
 	@echo "========== Image manipulating end =========="
 	
 code_analyze:
-ifeq ($(DAILY_BUILD), 0)
 	@echo "========== Image analyze start =========="
 	@if [ -f $(SCRIPT_DIR)/code_analyze.py ]; then \
 		$(CODE_ANALYZE_PYTHON) $(ANALYZE_MP_IMG) $(DAILY_BUILD); \
 	fi
 	@if [ -f $(SCRIPT_DIR)/static_code_analyze.py ]; then \
-		$(STATIC_ANALYZE_PYTHON); \
+		$(STATIC_ANALYZE_PYTHON) $(DAILY_BUILD); \
 	fi
 	@echo "========== Image analyze end =========="
-else
-	@echo "daily build"
-endif
 
 code_extract:
 	@echo "========== Image extract start =========="
@@ -368,7 +404,14 @@ code_extract:
 	fi
 	@echo "========== Image extract end =========="
 
-
+download_toolchain:
+ifeq ($(URL), aliyun)
+	@echo "Download toolchain from $(TOOLCHAINURL_ALIYUN)"
+	$(call download_toolchain_func,$(TOOLCHAINURL_ALIYUN))
+else
+	@echo "Download toolchain from $(TOOLCHAINURL)"
+	$(call download_toolchain_func,$(TOOLCHAINURL))
+endif
 #*****************************************************************************#
 #                      RULES TO BUILD COMPILER TIME                           #
 #*****************************************************************************#

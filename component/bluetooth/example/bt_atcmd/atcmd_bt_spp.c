@@ -9,7 +9,7 @@
 #include <osif.h>
 
 #include "platform_autoconf.h"
-#include <log_service.h>
+#include <atcmd_service.h>
 #include <bt_utils.h>
 #include <rtk_bt_def.h>
 #include <rtk_bt_common.h>
@@ -19,32 +19,30 @@
 
 static int atcmd_bt_spp_connect(int argc, char **argv)
 {
-	// ATBC=spp_cmd,conn,bd_addr
 	(void)argc;
 	char addr_str[30] = {0};
 	uint8_t bd_addr[RTK_BD_ADDR_LEN] = {0};
 
 	hexdata_str_to_bd_addr(argv[0], bd_addr, RTK_BD_ADDR_LEN);
 	if (rtk_bt_spp_connect(bd_addr)) {
-		AT_PRINTK("[ATBC] SPP connect fail \r\n");
+		BT_LOGE("SPP connect fail\r\n");
 		return -1;
 	}
 	rtk_bt_br_addr_to_str(bd_addr, addr_str, sizeof(addr_str));
-	AT_PRINTK("[ATBC] SPP connecting to device %s ...", addr_str);
+	BT_LOGA("SPP connecting to device %s ...\r\n", addr_str);
 
 	return 0;
 }
 
 static int atcmd_bt_spp_disconnect(int argc, char **argv)
 {
-	// ATBC=spp_cmd,disconn,bd_addr,server_chann
 	(void)argc;
 	uint8_t bd_addr[RTK_BD_ADDR_LEN] = {0};
 	uint8_t server_chann = 0;
 	char addr_str[30] = {0};
 
 	if (hexdata_str_to_bd_addr(argv[0], bd_addr, RTK_BD_ADDR_LEN) == false) {
-		AT_PRINTK("[ATBC] SPP send data op failed! wrong bd addr!");
+		BT_LOGE("SPP send data op failed! wrong bd addr!\r\n");
 		return -1;
 	}
 
@@ -56,37 +54,35 @@ static int atcmd_bt_spp_disconnect(int argc, char **argv)
 	p_disconn_req_t.local_server_chann = server_chann;
 
 	if (rtk_bt_spp_disconnect(&p_disconn_req_t)) {
-		AT_PRINTK("[ATBC] SPP disconnect channel 0x%xfail \r\n", p_disconn_req_t.local_server_chann);
+		BT_LOGE("SPP disconnect channel 0x%xfail\r\n", p_disconn_req_t.local_server_chann);
 		return -1;
 	}
 
 	rtk_bt_br_addr_to_str(bd_addr, addr_str, sizeof(addr_str));
-	AT_PRINTK("[ATBC] SPP send disconnect request to device %s ,server channel 0x%x \r\n", addr_str, server_chann);
+	BT_LOGA("SPP send disconnect request to device %s ,server channel 0x%x\r\n", addr_str, server_chann);
 
 	return 0;
 }
 
 static int atcmd_bt_spp_disconnect_all(int argc, char **argv)
 {
-	// ATBC=spp_cmd,disconn_all,bd_addr
 	(void)argc;
 	char addr_str[30] = {0};
 	uint8_t bd_addr[RTK_BD_ADDR_LEN] = {0};
 
 	hexdata_str_to_bd_addr(argv[0], bd_addr, RTK_BD_ADDR_LEN);
 	if (rtk_bt_spp_disconnect_all(bd_addr)) {
-		AT_PRINTK("[ATBC] SPP disconnect fail \r\n");
+		BT_LOGE("SPP disconnect fail\r\n");
 		return -1;
 	}
 	rtk_bt_br_addr_to_str(bd_addr, addr_str, sizeof(addr_str));
-	AT_PRINTK("[ATBC] SPP disconnecting to device %s ...", addr_str);
+	BT_LOGA("SPP disconnecting to device %s ...\r\n", addr_str);
 
 	return 0;
 }
 
 static int atcmd_bt_spp_send_data(int argc, char **argv)
 {
-	// ATBC=spp_cmd,send_data,bd_addr,server_chann,xxxxxxx
 	(void)argc;
 	uint8_t bd_addr[RTK_BD_ADDR_LEN] = {0};
 	uint8_t server_chann = 0;
@@ -94,14 +90,14 @@ static int atcmd_bt_spp_send_data(int argc, char **argv)
 	char addr_str[30] = {0};
 
 	if (hexdata_str_to_bd_addr(argv[0], bd_addr, RTK_BD_ADDR_LEN) == false) {
-		AT_PRINTK("[ATBC] SPP send data op failed! wrong bd addr!");
+		BT_LOGE("SPP send data op failed! wrong bd addr!\r\n");
 		return -1;
 	}
 
 	uint16_t data_send_len = strlen(argv[2]) / 2;
 
 	if (hexdata_str_to_array(argv[2], data_send_buf, data_send_len) == false) {
-		AT_PRINTK("[ATBC] SPP send data op failed! wrong hex data!");
+		BT_LOGE("SPP send data op failed! wrong hex data!\r\n");
 		return -1;
 	}
 
@@ -113,19 +109,18 @@ static int atcmd_bt_spp_send_data(int argc, char **argv)
 	send_data_t.data = data_send_buf;
 	send_data_t.len = data_send_len;
 	if (rtk_bt_spp_send_data(&send_data_t)) {
-		AT_PRINTK("[ATBC] SPP send data fail \r\n");
+		BT_LOGE("SPP send data fail\r\n");
 		return -1;
 	}
 
 	rtk_bt_br_addr_to_str(bd_addr, addr_str, sizeof(addr_str));
-	AT_PRINTK("[ATBC] SPP send data to device %s ,server channel 0x%x success!", addr_str, server_chann);
+	BT_LOGA("SPP send data to device %s ,server channel 0x%x success!\r\n", addr_str, server_chann);
 
 	return 0;
 }
 
 static int atcmd_bt_spp_give_credits(int argc, char **argv)
 {
-	// ATBC=spp_cmd,give_credits,bd_addr,server_chann,xx
 	(void)argc;
 	uint8_t bd_addr[RTK_BD_ADDR_LEN] = {0};
 	uint8_t server_chann = 0;
@@ -133,7 +128,7 @@ static int atcmd_bt_spp_give_credits(int argc, char **argv)
 	char addr_str[30] = {0};
 
 	if (hexdata_str_to_bd_addr(argv[0], bd_addr, RTK_BD_ADDR_LEN) == false) {
-		AT_PRINTK("[ATBC] SPP give credits op failed! wrong bd addr!");
+		BT_LOGE("SPP give credits op failed! wrong bd addr!\r\n");
 		return -1;
 	}
 
@@ -146,12 +141,12 @@ static int atcmd_bt_spp_give_credits(int argc, char **argv)
 	give_credits_t.credits = credits;
 
 	if (rtk_bt_spp_credits_give(&give_credits_t)) {
-		AT_PRINTK("[ATBC] SPP send data fail \r\n");
+		BT_LOGE("SPP send data fail\r\n");
 		return -1;
 	}
 
 	rtk_bt_br_addr_to_str(bd_addr, addr_str, sizeof(addr_str));
-	AT_PRINTK("[ATBC] SPP give %d credits to device %s ,server channel 0x%x success!", credits, addr_str, server_chann);
+	BT_LOGA("SPP give %d credits to device %s ,server channel 0x%x success!\r\n", credits, addr_str, server_chann);
 
 	return 0;
 }
@@ -167,6 +162,5 @@ static const cmd_table_t spp_cmd_table[] = {
 
 int atcmd_bt_spp_cmd(int argc, char *argv[])
 {
-	atcmd_bt_excute(argc, argv, spp_cmd_table, "[ATBC][spp]");
-	return 0;
+	return atcmd_bt_excute(argc, argv, spp_cmd_table, "[AT+BTSPP]");
 }

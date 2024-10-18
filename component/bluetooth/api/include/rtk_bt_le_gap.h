@@ -1085,6 +1085,15 @@ typedef struct {
 } rtk_bt_le_set_phy_param_t;
 
 /**
+ * @typedef   rtk_bt_le_pairing_mode_t
+ * @brief     Bluetooth BLE SM pairing mode definition.
+ */
+typedef enum {
+	RTK_PAIRING_MODE_NO_PAIRING  = 0x00,
+	RTK_PAIRING_MODE_PAIRABLE    = 0x01,
+} rtk_bt_le_pairing_mode_t;
+
+/**
  * @typedef   rtk_bt_le_io_cap_t
  * @brief     Bluetooth BLE SM IO capability type definition.
  */
@@ -1108,13 +1117,15 @@ typedef enum {
  * @brief     Bluetooth BLE SM security parameter type definition.
  */
 typedef struct {
-	rtk_bt_le_io_cap_t io_cap;      /*!< IO capabilities */
-	uint8_t oob_data_flag;          /*!< OOB data flag */
-	uint8_t bond_flag;              /*!< Bonding flags */
-	uint8_t mitm_flag;              /*!< MITM flag */
-	uint8_t sec_pair_flag;          /*!< Secure connection pairing support flag */
-	uint8_t use_fixed_key;          /*!< Pairing use fixed passkey */
-	uint32_t fixed_key;             /*!< Fixed passkey value */
+	rtk_bt_le_io_cap_t io_cap;              /*!< IO capabilities */
+	uint8_t oob_data_flag;                  /*!< OOB data flag */
+	uint8_t bond_flag;                      /*!< Bonding flags */
+	uint8_t mitm_flag;                      /*!< MITM flag */
+	uint8_t sec_pair_flag;                  /*!< Secure connection pairing support flag */
+	uint8_t sec_pair_only_flag;             /*!< Only accept secure connection pairing when local sec_pair_flag is set */
+	uint8_t use_fixed_key;                  /*!< Pairing use fixed passkey */
+	uint32_t fixed_key;                     /*!< Fixed passkey value */
+	uint8_t auto_sec_req;                   /*!< Auto send security request when connected */
 } rtk_bt_le_security_param_t;
 
 /**
@@ -1846,9 +1857,48 @@ typedef enum {
 	RTK_BT_LE_TX_SOF        = 0x01, /*!< Start of frame. */
 	RTK_BT_LE_TX_EOF        = 0x02, /*!< End of frame. */
 } rtk_bt_le_sof_eof_ind_t;
-
 #endif
 
+#if defined(RTK_BLE_COC_SUPPORT) && RTK_BLE_COC_SUPPORT
+typedef enum {
+	RTK_BT_LE_COC_SEC_NONE,
+	RTK_BT_LE_COC_SEC_UNAUTHEN_ENCRYPT,
+	RTK_BT_LE_COC_SEC_AUTHEN_ENCRYPT,
+	RTK_BT_LE_COC_SEC_UNAUTHEN_DATA_SIGN,
+	RTK_BT_LE_COC_SEC_AUTHEN_DATA_SIGN,
+	RTK_BT_LE_COC_SEC_AUTHOR,
+} rtk_bt_le_coc_security_mode_t;
+
+typedef enum {
+	RTK_BT_LE_COC_PARAM_LOCAL_MTU          = 0x1,
+} rtk_bt_le_coc_param_type_t;
+
+typedef enum {
+	RTK_BT_LE_COC_CHAN_PARAM_CUR_CREDITS   = 0x0,
+	RTK_BT_LE_COC_CHAN_PARAM_MAX_CREDITS   = 0x1,
+	RTK_BT_LE_COC_CHAN_PARAM_MTU           = 0x2,
+} rtk_bt_le_coc_chan_param_type_t;
+
+typedef struct {
+	uint16_t conn_handle;                     /*!< Connection handle */
+	uint16_t cid;                             /*!< Local l2cap channel ID assgined by bt stack */
+	uint16_t err;                             /*!< Error code of l2cap channel connect or disconnect */
+} rtk_bt_le_coc_conn_state_ind_t;
+
+typedef struct {
+	uint16_t conn_handle;                     /*!< Connection handle */
+	uint16_t cid;                             /*!< Local l2cap channel ID */
+	uint16_t err;                             /*!< Error code of l2cap channel send data */
+	uint8_t credit;                           /*!< Remain credits number after send data */
+} rtk_bt_le_coc_send_data_res_ind_t;
+
+typedef struct {
+	uint16_t conn_handle;                     /*!< Connection handle */
+	uint16_t cid;                             /*!< Local l2cap channel ID */
+	uint16_t len;                             /*!< Length of received data */
+	uint8_t *data;                            /*!< Received data from remote */
+} rtk_bt_le_coc_receive_data_ind_t;
+#endif /* RTK_BLE_COC_SUPPORT */
 
 /****************** Data structure for API func param pack and unpack ******************/
 typedef struct {
@@ -1906,6 +1956,42 @@ typedef struct {
 	rtk_bt_le_privacy_mode_t privacy_mode;
 } rtk_bt_le_set_privacy_mode_param_t;
 #endif
+
+#if defined(RTK_BLE_COC_SUPPORT) && RTK_BLE_COC_SUPPORT
+typedef struct {
+	uint8_t is_register;
+	uint16_t le_psm;
+} rtk_bt_le_coc_psm_reg_param_t;
+
+typedef struct {
+	uint16_t le_psm;
+	uint8_t active;
+	rtk_bt_le_coc_security_mode_t sec_mode;
+	uint8_t key_size;
+} rtk_bt_le_coc_set_psm_sec_param_t;
+
+typedef struct {
+	rtk_bt_le_coc_param_type_t param_type;
+	uint16_t value;
+} rtk_bt_le_coc_param_set_t;
+
+typedef struct {
+	rtk_bt_le_coc_chan_param_type_t param_type;
+	uint16_t cid;
+	uint16_t *value;
+} rtk_bt_le_coc_chan_param_get_t;
+
+typedef struct {
+	uint16_t conn_handle;
+	uint16_t le_psm;
+} rtk_bt_le_coc_connect_param_t;
+
+typedef struct {
+	uint16_t cid;
+	uint16_t len;
+	uint8_t *data;
+} rtk_bt_le_coc_send_data_param_t;
+#endif /* RTK_BLE_COC_SUPPORT */
 /***************************************************************************************/
 
 typedef enum {
@@ -2268,7 +2354,6 @@ typedef struct {
  */
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_get_conn_id(uint16_t conn_handle, uint8_t *p_conn_id)
  * @brief     Get connection id by connection handle.
  * @param[in] conn_handle: Connection handle.
  * @param[out] p_conn_id: Connection id for BLE link. Range 0 ~ RTK_BLE_GAP_MAX_LINKS - 1.
@@ -2279,7 +2364,6 @@ typedef struct {
 uint16_t rtk_bt_le_gap_get_conn_id(uint16_t conn_handle, uint8_t *p_conn_id);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_get_version(rtk_bt_le_version_info_t *version)
  * @brief     Get local stack version information.
  * @param[out] version: version information
  * @return
@@ -2289,7 +2373,6 @@ uint16_t rtk_bt_le_gap_get_conn_id(uint16_t conn_handle, uint8_t *p_conn_id);
 uint16_t rtk_bt_le_gap_get_version(rtk_bt_le_version_info_t *version);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_get_bd_addr(rtk_bt_le_addr_t *paddr)
  * @brief     Get local device's address.
  * @param[out] paddr: Device address under use
  * @return
@@ -2299,7 +2382,6 @@ uint16_t rtk_bt_le_gap_get_version(rtk_bt_le_version_info_t *version);
 uint16_t rtk_bt_le_gap_get_bd_addr(rtk_bt_le_addr_t *paddr);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_device_name(const uint8_t *name)
  * @brief     Set bluetooth Device name.
  * @param[in] name: Device name
  * @return
@@ -2309,7 +2391,6 @@ uint16_t rtk_bt_le_gap_get_bd_addr(rtk_bt_le_addr_t *paddr);
 uint16_t rtk_bt_le_gap_set_device_name(const uint8_t *name);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_appearance(uint16_t appearance)
  * @brief     Set device appearance.
  * @param[in] appearance: Device apperance
  * @return
@@ -2319,7 +2400,6 @@ uint16_t rtk_bt_le_gap_set_device_name(const uint8_t *name);
 uint16_t rtk_bt_le_gap_set_appearance(uint16_t appearance);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_preferred_conn_param(rtk_bt_le_preferred_conn_param_t *p_preferred_conn_param)
  * @brief     Set preferred connetion parameters.
  * @param[in] p_preferred_conn_param: preferred connetion parameters, @ref rtk_bt_le_preferred_conn_param_t
  * @return
@@ -2329,7 +2409,6 @@ uint16_t rtk_bt_le_gap_set_appearance(uint16_t appearance);
 uint16_t rtk_bt_le_gap_set_preferred_conn_param(rtk_bt_le_preferred_conn_param_t *p_preferred_conn_param);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_rand_addr(bool auto_generate, rtk_bt_le_rand_addr_type_t type, uint8_t *p_addr)
  * @brief     Set random address.
  *            NOTE: This API shall not be excuted when advertising, scanning and initiating are enabled.
  * @param[in] auto_generate: Trigger auto generate address.
@@ -2343,7 +2422,6 @@ uint16_t rtk_bt_le_gap_set_preferred_conn_param(rtk_bt_le_preferred_conn_param_t
 uint16_t rtk_bt_le_gap_set_rand_addr(bool auto_generate, rtk_bt_le_rand_addr_type_t type, uint8_t *p_addr);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_adv_data(uint8_t *padv_data, uint32_t adv_len)
  * @brief     Set BLE GAP advertising data.
  * @param[in] padv_data: Advertising data
  * @param[in] adv_len: Length of padv_data
@@ -2354,7 +2432,6 @@ uint16_t rtk_bt_le_gap_set_rand_addr(bool auto_generate, rtk_bt_le_rand_addr_typ
 uint16_t rtk_bt_le_gap_set_adv_data(uint8_t *padv_data, uint32_t adv_len);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_scan_rsp_data(uint8_t *pscan_rsp_data, uint32_t scan_rsp_len)
  * @brief     Set BLE GAP scan response data.
  * @param[in] pscan_rsp_data: Scan response data
  * @param[in] scan_rsp_len: Length of pscan_rsp_data
@@ -2365,7 +2442,6 @@ uint16_t rtk_bt_le_gap_set_adv_data(uint8_t *padv_data, uint32_t adv_len);
 uint16_t rtk_bt_le_gap_set_scan_rsp_data(uint8_t *pscan_rsp_data, uint32_t scan_rsp_len);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_start_adv(rtk_bt_le_adv_param_t *padv_param)
  * @brief     Start BLE GAP advertising, will cause event @ref RTK_BT_LE_GAP_EVT_ADV_START_IND
  * @param[in] padv_param: Advertising parameters
  * @return
@@ -2375,7 +2451,6 @@ uint16_t rtk_bt_le_gap_set_scan_rsp_data(uint8_t *pscan_rsp_data, uint32_t scan_
 uint16_t rtk_bt_le_gap_start_adv(rtk_bt_le_adv_param_t *padv_param);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_stop_adv(void)
  * @brief     Stop BLE GAP advertising, will cause event @ref RTK_BT_LE_GAP_EVT_ADV_STOP_IND
  * @return
  *            - 0  : Succeed
@@ -2384,7 +2459,15 @@ uint16_t rtk_bt_le_gap_start_adv(rtk_bt_le_adv_param_t *padv_param);
 uint16_t rtk_bt_le_gap_stop_adv(void);
 
 /**
- * @fn        bool rtk_bt_le_gap_adv_is_idle(void)
+ * @brief     Get BLE advertising parameter
+ * @param[out] padv_param: Advertising parameters
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_le_gap_get_adv_param(rtk_bt_le_adv_param_t *padv_param);
+
+/**
  * @brief     Check if BLE GAP advertise is idle
  * @return
  *            - true  : Adv state is idle
@@ -2394,9 +2477,8 @@ bool rtk_bt_le_gap_adv_is_idle(void);
 
 #if defined(RTK_BLE_5_0_AE_ADV_SUPPORT) && RTK_BLE_5_0_AE_ADV_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_create_ext_adv(rtk_bt_le_ext_adv_param_t *p_adv_param, uint8_t *p_adv_handle)
  * @brief     Create an extended advertising set
- * @param[in] p_adv_handle: Advertising parameters
+ * @param[in] p_adv_param: Advertising parameters
  * @param[in,out] p_adv_handle: Pointer to advertising set handle
  * @return
  *            - 0  : Succeed
@@ -2405,7 +2487,6 @@ bool rtk_bt_le_gap_adv_is_idle(void);
 uint16_t rtk_bt_le_gap_create_ext_adv(rtk_bt_le_ext_adv_param_t *p_adv_param, uint8_t *p_adv_handle);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_ext_adv_data(uint8_t adv_handle, uint8_t *padv_data, uint16_t adv_len)
  * @brief     Set BLE GAP extended advertising data.
  * @param[in] adv_handle: Identify an advertising set, which is assigned by @ref rtk_bt_le_gap_create_ext_adv.
  * @param[in] padv_data: Extended advertising data.
@@ -2418,7 +2499,6 @@ uint16_t rtk_bt_le_gap_create_ext_adv(rtk_bt_le_ext_adv_param_t *p_adv_param, ui
 uint16_t rtk_bt_le_gap_set_ext_adv_data(uint8_t adv_handle, uint8_t *padv_data, uint16_t adv_len);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_ext_scan_rsp_data(uint8_t adv_handle, uint8_t *pscan_rsp_data, uint16_t scan_rsp_len)
  * @brief     Set BLE GAP extended scan response data.
  * @param[in] adv_handle: Identify an advertising set, which is assigned by @ref rtk_bt_le_gap_create_ext_adv.
  * @param[in] pscan_rsp_data: Extended scan response data.
@@ -2431,7 +2511,6 @@ uint16_t rtk_bt_le_gap_set_ext_adv_data(uint8_t adv_handle, uint8_t *padv_data, 
 uint16_t rtk_bt_le_gap_set_ext_scan_rsp_data(uint8_t adv_handle, uint8_t *pscan_rsp_data, uint16_t scan_rsp_len);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_start_ext_adv(uint8_t adv_handle, uint16_t duration, uint8_t max_ext_adv_evt)
  * @brief     Start BLE GAP extended advertising, will cause event @ref RTK_BT_LE_GAP_EVT_EXT_ADV_IND
  * @param[in] adv_handle: Identify an advertising set, which is assigned by @ref rtk_bt_le_gap_create_ext_adv.
  * @param[in] duration: If non-zero: Advertising duration, in units of 10ms
@@ -2444,7 +2523,6 @@ uint16_t rtk_bt_le_gap_set_ext_scan_rsp_data(uint8_t adv_handle, uint8_t *pscan_
 uint16_t rtk_bt_le_gap_start_ext_adv(uint8_t adv_handle, uint16_t duration, uint8_t num_events);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_stop_ext_adv(uint8_t adv_handle)
  * @brief     Stop BLE GAP extended advertising, will cause event @ref RTK_BT_LE_GAP_EVT_EXT_ADV_IND
  * @param[in] adv_handle: Identify an advertising set, which is assigned by @ref rtk_bt_le_gap_create_ext_adv.
  * @return
@@ -2454,7 +2532,6 @@ uint16_t rtk_bt_le_gap_start_ext_adv(uint8_t adv_handle, uint16_t duration, uint
 uint16_t rtk_bt_le_gap_stop_ext_adv(uint8_t adv_handle);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_remove_ext_adv(uint8_t adv_handle)
  * @brief     Remove an advertising set.
  * @param[in] adv_handle: Identify an advertising set, which is assigned by @ref rtk_bt_le_gap_create_ext_adv.
  * @return
@@ -2466,7 +2543,6 @@ uint16_t rtk_bt_le_gap_remove_ext_adv(uint8_t adv_handle);
 
 #if (defined(RTK_BLE_5_0_AE_ADV_SUPPORT) && RTK_BLE_5_0_AE_ADV_SUPPORT) || (defined(RTK_BLE_5_0_AE_SCAN_SUPPORT) && RTK_BLE_5_0_AE_SCAN_SUPPORT)
 /**
- * @fn        uint16_t rtk_bt_le_gap_ext_connect(rtk_bt_le_ext_create_conn_param_t *p_ext_conn_param)
  * @brief     Start extended connection, will cause event @ref RTK_BT_LE_GAP_EVT_CONNECT_IND
  * @param[in] p_ext_conn_param: Extended connection parameter.
  * @return
@@ -2478,7 +2554,6 @@ uint16_t rtk_bt_le_gap_ext_connect(rtk_bt_le_ext_create_conn_param_t *p_ext_conn
 
 #if defined(RTK_BLE_5_0_PA_ADV_SUPPORT) && RTK_BLE_5_0_PA_ADV_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_start_pa(rtk_bt_le_pa_param_t *param)
  * @brief     Set and Start BLE GAP periodic advertising, will cause event @ref RTK_BT_LE_GAP_EVT_PA_IND
  *            NOTE: Only advertising event properties @ref RTK_BT_LE_EXT_ADV_EXTENDED_ADV_NON_SCAN_NON_CONN_UNDIRECTED and
  *            @ref RTK_BT_LE_EXT_ADV_EXTENDED_ADV_NON_SCAN_NON_CONN_DIRECTED support periodic advertising.
@@ -2490,7 +2565,6 @@ uint16_t rtk_bt_le_gap_ext_connect(rtk_bt_le_ext_create_conn_param_t *p_ext_conn
 uint16_t rtk_bt_le_gap_start_pa(rtk_bt_le_pa_param_t *param);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_stop_pa(uint8_t adv_handle)
  * @brief     Stop BLE GAP periodic advertising, will cause event @ref RTK_BT_LE_GAP_EVT_PA_IND
  * @param[in] adv_handle: Identify an advertising set, which is assigned by @ref rtk_bt_le_gap_create_ext_adv.
  * @return
@@ -2500,7 +2574,6 @@ uint16_t rtk_bt_le_gap_start_pa(rtk_bt_le_pa_param_t *param);
 uint16_t rtk_bt_le_gap_stop_pa(uint8_t adv_handle);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_update_pa(uint8_t adv_handle, bool update_did_only, uint8_t *data, uint16_t len)
  * @brief     Stop BLE GAP periodic advertising, will cause event @ref RTK_BT_LE_GAP_EVT_PA_IND
  * @param[in] adv_handle: Identify an advertising set, which is assigned by @ref rtk_bt_le_gap_create_ext_adv.
  * @param[in] update_did_only: If true, keep advertising data unchanged and just update advertising DID of periodic advertising, data and len will be ignored.
@@ -2515,7 +2588,6 @@ uint16_t rtk_bt_le_gap_update_pa(uint8_t adv_handle, bool update_did_only, uint8
 
 #if defined(RTK_BLE_5_0_PA_SYNC_SUPPORT) && RTK_BLE_5_0_PA_SYNC_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_pa_sync_modify_adv_list(rtk_bt_le_pa_sync_advlist_op_t operation, rtk_bt_le_addr_t adv_addr, uint8_t adv_sid)
  * @brief     Modify Periodic Advertiser list.
  * @param[in] operation:  Add entry to Periodic Advertiser list, remove entry from Periodic Advertiser list or clear all entries
  *                        from Periodic Advertiser list. @ref rtk_bt_le_pa_sync_advlist_op_t.
@@ -2531,7 +2603,6 @@ uint16_t rtk_bt_le_gap_update_pa(uint8_t adv_handle, bool update_did_only, uint8
 uint16_t rtk_bt_le_gap_pa_sync_modify_adv_list(rtk_bt_le_pa_sync_advlist_op_t operation, rtk_bt_le_addr_t adv_addr, uint8_t adv_sid);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_pa_sync_create(rtk_bt_le_pa_sync_create_t *param)
  * @brief     Synchronize with a periodic advertising train from an advertiser.
  *            This will cause event @ref RTK_BT_LE_GAP_EVT_PA_SYNC_STATE_IND.
  *            Event @ref RTK_BT_LE_GAP_EVT_PA_ADV_REPORT_IND will be sent when adv report is enabled by param->options.
@@ -2544,7 +2615,6 @@ uint16_t rtk_bt_le_gap_pa_sync_modify_adv_list(rtk_bt_le_pa_sync_advlist_op_t op
 uint16_t rtk_bt_le_gap_pa_sync_create(rtk_bt_le_pa_sync_create_t *param);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_pa_sync_terminate(uint8_t sync_id)
  * @brief     Stop reception of the periodic advertising train, or cancel the synchronization creation while it is pending.
  * @param[in] sync_id:   Identify the synchronization with a periodic advertising train.
  *
@@ -2556,7 +2626,6 @@ uint16_t rtk_bt_le_gap_pa_sync_terminate(uint8_t sync_id);
 
 // #if defined(RTK_BLE_5_1_PAST_RECIPIENT_SUPPORT) && RTK_BLE_5_1_PAST_RECIPIENT_SUPPORT
 // /**
-//  * @fn        rtk_bt_le_gap_pa_sync_report_set(uint8_t sync_id, bool report_enable, bool duplicate_filter_enable)
 //  * @brief     Enable or disable reports for specified periodic advertising train.
 //  * @param[in] sync_id:   Identify the synchronization with a periodic advertising train.
 //  * @param[in] report_enable:   Enable or disable reports for periodic advertising.
@@ -2571,7 +2640,6 @@ uint16_t rtk_bt_le_gap_pa_sync_terminate(uint8_t sync_id);
 
 #if defined(RTK_BLE_5_1_PAST_SENDER_SUPPORT) && RTK_BLE_5_1_PAST_SENDER_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_past_send(uint16_t conn_handle, uint16_t service_data, bool use_sync_id, uint8_t idx)
  * @brief     Start PAST transfer, will cause event @ref RTK_BT_LE_GAP_ACT_PAST_TRANSFER.
  * @param[in] conn_handle:   Connection handle.
  * @param[in] service_data:  A value provided by the Host to identify the periodic advertising train to the peer device.
@@ -2589,7 +2657,6 @@ uint16_t rtk_bt_le_gap_past_send(uint16_t conn_handle, uint16_t service_data, bo
 
 #if defined(RTK_BLE_5_1_PAST_RECIPIENT_SUPPORT) && RTK_BLE_5_1_PAST_RECIPIENT_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_past_recipient_set(rtk_bt_le_past_recv_param_t *param)
  * @brief     Set PAST recipient paramter, will cause event @ref RTK_BT_LE_GAP_EVT_PA_SYNC_STATE_IND when received past packet.
  * @param[in] param:   PAST recipient setting.
  *
@@ -2600,7 +2667,6 @@ uint16_t rtk_bt_le_gap_past_send(uint16_t conn_handle, uint16_t service_data, bo
 uint16_t rtk_bt_le_gap_past_recipient_set(rtk_bt_le_past_recv_param_t *param);
 
 /**
- * @fn        rtk_bt_le_gap_default_past_recipient_set(rtk_bt_le_past_recv_param_t *param)
  * @brief     Set default PAST recipient paramter, will cause event @ref RTK_BT_LE_GAP_EVT_PA_SYNC_STATE_IND when received past packet.
  * @param[in] param:   default PAST recipient setting.
  *
@@ -2612,7 +2678,6 @@ uint16_t rtk_bt_le_gap_default_past_recipient_set(rtk_bt_le_past_recv_param_t *p
 #endif
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_scan_info_filter(rtk_bt_le_scan_info_filter_param_t *p_scan_info)
  * @brief     Set scan info filter.
  * @param[in] p_scan_info: Scan info filter parameters
  * @return
@@ -2622,7 +2687,6 @@ uint16_t rtk_bt_le_gap_default_past_recipient_set(rtk_bt_le_past_recv_param_t *p
 uint16_t rtk_bt_le_gap_scan_info_filter(rtk_bt_le_scan_info_filter_param_t *p_scan_info);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_scan_param(rtk_bt_le_scan_param_t *p_gap_scan_param)
  * @brief     Set scan paramters.
  * @param[in] p_gap_scan_param: Scan paramters
  * @return
@@ -2632,7 +2696,15 @@ uint16_t rtk_bt_le_gap_scan_info_filter(rtk_bt_le_scan_info_filter_param_t *p_sc
 uint16_t rtk_bt_le_gap_set_scan_param(rtk_bt_le_scan_param_t *p_gap_scan_param);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_start_scan(void)
+ * @brief     Get scan paramters.
+ * @param[out] pscan_param: Scan paramters
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_le_gap_get_scan_param(rtk_bt_le_scan_param_t *pscan_param);
+
+/**
  * @brief     Start scan, will cause event @ref RTK_BT_LE_GAP_EVT_SCAN_START_IND.
  * @return
  *            - 0  : Succeed
@@ -2641,7 +2713,6 @@ uint16_t rtk_bt_le_gap_set_scan_param(rtk_bt_le_scan_param_t *p_gap_scan_param);
 uint16_t rtk_bt_le_gap_start_scan(void);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_stop_scan(void)
  * @brief     Stop scan, will cause event @ref RTK_BT_LE_GAP_EVT_SCAN_STOP_IND
  * @return
  *            - 0  : Succeed
@@ -2651,36 +2722,32 @@ uint16_t rtk_bt_le_gap_stop_scan(void);
 
 #if defined(RTK_BLE_5_0_AE_SCAN_SUPPORT) && RTK_BLE_5_0_AE_SCAN_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_ext_scan_set_param(rtk_bt_le_ext_scan_param_t *p_param)
  * @brief     Set ext scan paramters.
  * @param[in] p_param: Ext Scan paramters
  * @return
  *            - 0  : Succeed
  *            - Others: Error code
  */
-uint16_t rtk_bt_le_gap_ext_scan_set_param(rtk_bt_le_ext_scan_param_t *p_param);
+uint16_t rtk_bt_le_gap_set_ext_scan_param(rtk_bt_le_ext_scan_param_t *p_param);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_ext_scan_start(void)
  * @brief     Stop ext scan, will cause event @ref RTK_BT_LE_GAP_EVT_SCAN_START_IND
  * @return
  *            - 0  : Succeed
  *            - Others: Error code
  */
-uint16_t rtk_bt_le_gap_ext_scan_start(void);
+uint16_t rtk_bt_le_gap_start_ext_scan(void);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_ext_scan_stop(void)
  * @brief     Stop ext scan, will cause event @ref RTK_BT_LE_GAP_EVT_SCAN_STOP_IND
  * @return
  *            - 0  : Succeed
  *            - Others: Error code
  */
-uint16_t rtk_bt_le_gap_ext_scan_stop(void);
+uint16_t rtk_bt_le_gap_stop_ext_scan(void);
 #endif
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_connect(rtk_bt_le_create_conn_param_t *p_conn_param)
  * @brief     Start connection, will cause event @ref RTK_BT_LE_GAP_EVT_CONNECT_IND
  * @param[in] p_conn_param: Connection parmaters
  * @return
@@ -2690,7 +2757,6 @@ uint16_t rtk_bt_le_gap_ext_scan_stop(void);
 uint16_t rtk_bt_le_gap_connect(rtk_bt_le_create_conn_param_t *p_conn_param);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_connect_cancel(rtk_bt_le_addr_t *cancel_addr)
  * @brief     Cancel the creating connection, will cause event @ref RTK_BT_LE_GAP_EVT_DISCONN_IND
  * @param[in] cancel_addr: Address of remote device that need to cancel connection.
  * @return
@@ -2700,7 +2766,6 @@ uint16_t rtk_bt_le_gap_connect(rtk_bt_le_create_conn_param_t *p_conn_param);
 uint16_t rtk_bt_le_gap_connect_cancel(rtk_bt_le_addr_t *cancel_addr);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_disconnect(uint16_t conn_handle)
  * @brief     Start disconnection, will cause event @ref RTK_BT_LE_GAP_EVT_DISCONN_IND
  * @param[in] conn_handle: The connection handle need to disconnect.
  * @return
@@ -2710,7 +2775,6 @@ uint16_t rtk_bt_le_gap_connect_cancel(rtk_bt_le_addr_t *cancel_addr);
 uint16_t rtk_bt_le_gap_disconnect(uint16_t conn_handle);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_disconnect_with_reason(uint16_t conn_handle, uint8_t reason)
  * @brief     Start disconnection with specific reason, will cause event @ref RTK_BT_LE_GAP_EVT_DISCONN_IND
  * @param[in] conn_handle: The connection handle need to disconnect.
  * @param[in] reason: The reason to disconnect @ref rtk_bt_err_hci.
@@ -2721,7 +2785,6 @@ uint16_t rtk_bt_le_gap_disconnect(uint16_t conn_handle);
 uint16_t rtk_bt_le_gap_disconnect_with_reason(uint16_t conn_handle, uint8_t reason);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_update_conn_param(rtk_bt_le_update_conn_param_t *p_update_conn_param)
  * @brief     Update connection paramters. If controller update the connection parameters,
  *            will cause event @ref RTK_BT_LE_GAP_EVT_CONN_UPDATE_IND
  * @param[in] p_update_conn_param: Updated connection parmaters
@@ -2732,7 +2795,6 @@ uint16_t rtk_bt_le_gap_disconnect_with_reason(uint16_t conn_handle, uint8_t reas
 uint16_t rtk_bt_le_gap_update_conn_param(rtk_bt_le_update_conn_param_t *p_update_conn_param);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_modify_whitelist(rtk_bt_le_modify_wl_param_t *p_wl_op_param)
  * @brief     Modify device white list.
  * @param[in] p_wl_op_param: Modification operation paramters
  * @return
@@ -2742,7 +2804,6 @@ uint16_t rtk_bt_le_gap_update_conn_param(rtk_bt_le_update_conn_param_t *p_update
 uint16_t rtk_bt_le_gap_modify_whitelist(rtk_bt_le_modify_wl_param_t *p_wl_op_param);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_read_rssi(uint16_t conn_handle, int8_t *p_rssi)
  * @brief     Read specific connection RSSI.
  * @param[in] conn_handle: Handle of connection to Read RSSI
  * @param[out] p_rssi: RSSI value
@@ -2753,7 +2814,6 @@ uint16_t rtk_bt_le_gap_modify_whitelist(rtk_bt_le_modify_wl_param_t *p_wl_op_par
 uint16_t rtk_bt_le_gap_read_rssi(uint16_t conn_handle, int8_t *p_rssi);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_get_dev_state(rtk_bt_le_gap_dev_state_t *p_dev_state)
  * @brief     Get gap dev state.
  * @param[out] p_dev_state: Deice state
  * @return
@@ -2763,7 +2823,6 @@ uint16_t rtk_bt_le_gap_read_rssi(uint16_t conn_handle, int8_t *p_rssi);
 uint16_t rtk_bt_le_gap_get_dev_state(rtk_bt_le_gap_dev_state_t *p_dev_state);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_get_conn_info(uint16_t conn_handle, rtk_bt_le_conn_info_t *p_conn_info)
  * @brief     Get connection information.
  * @param[in] conn_handle: Connection handle
  * @param[out] p_conn_info: Connection information
@@ -2774,7 +2833,6 @@ uint16_t rtk_bt_le_gap_get_dev_state(rtk_bt_le_gap_dev_state_t *p_dev_state);
 uint16_t rtk_bt_le_gap_get_conn_info(uint16_t conn_handle, rtk_bt_le_conn_info_t *p_conn_info);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_get_mtu_size(uint16_t conn_handle, uint16_t *p_mtu_size)
  * @brief     Get LE connection ATT_MTU size.
  * @param[in] conn_handle: Connection handle
  * @param[out] p_mtu_size: Exchanged MTU size
@@ -2785,7 +2843,6 @@ uint16_t rtk_bt_le_gap_get_conn_info(uint16_t conn_handle, rtk_bt_le_conn_info_t
 uint16_t rtk_bt_le_gap_get_mtu_size(uint16_t conn_handle, uint16_t *p_mtu_size);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_get_active_conn(rtk_bt_le_get_active_conn_t *p_active_conn)
  * @brief     Get active connection number and their handles.
  * @param[out] p_active_conn: Active connection number and handles
  * @return
@@ -2795,7 +2852,6 @@ uint16_t rtk_bt_le_gap_get_mtu_size(uint16_t conn_handle, uint16_t *p_mtu_size);
 uint16_t rtk_bt_le_gap_get_active_conn(rtk_bt_le_get_active_conn_t *p_active_conn);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_get_conn_handle_by_addr(rtk_bt_le_addr_t *p_addr, uint16_t *p_conn_handle)
  * @brief     Get active connection handle by address.
  * @param[in]  p_addr: Remote device's address
  * @param[out] p_conn_handle: Connection handle
@@ -2806,7 +2862,6 @@ uint16_t rtk_bt_le_gap_get_active_conn(rtk_bt_le_get_active_conn_t *p_active_con
 uint16_t rtk_bt_le_gap_get_conn_handle_by_addr(rtk_bt_le_addr_t *p_addr, uint16_t *p_conn_handle);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_max_mtu_size(uint16_t mtu_size)
  * @brief     Set Max MTU size
  * @param[in] mtu_size: MTU size value
  * @note      This API shall be called before creating connection. When connection is etablishing or
@@ -2818,7 +2873,6 @@ uint16_t rtk_bt_le_gap_get_conn_handle_by_addr(rtk_bt_le_addr_t *p_addr, uint16_
 uint16_t rtk_bt_le_gap_set_max_mtu_size(uint16_t mtu_size);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_channels(uint8_t *p_chan_map)
  * @brief     Set Bluetooth device channel map.
  * @param[in] p_chan_map: Channel map, size is @ref RTK_BT_LE_CHAN_MAP_LEN
  * @return
@@ -2829,7 +2883,6 @@ uint16_t rtk_bt_le_gap_set_channels(uint8_t *p_chan_map);
 
 #if defined(RTK_BLE_4_2_DATA_LEN_EXT_SUPPORT) && RTK_BLE_4_2_DATA_LEN_EXT_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_data_len(rtk_bt_le_set_datalen_param_t *p_datalen_param)
  * @brief     Set Bluetooth device connection data length paramters. If controller change the data length,
  *            will cause event @ref RTK_BT_LE_GAP_EVT_DATA_LEN_CHANGE_IND
  * @param[in] p_datalen_param: Connection data length paramters
@@ -2842,7 +2895,6 @@ uint16_t rtk_bt_le_gap_set_data_len(rtk_bt_le_set_datalen_param_t *p_datalen_par
 
 #if defined(RTK_BLE_5_0_SET_PHYS_SUPPORT) && RTK_BLE_5_0_SET_PHYS_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_phy(rtk_bt_le_set_phy_param_t *p_phy_param)
  * @brief     Set Bluetooth device PHY paramters. If controller updates the PHY,
  *            will cause event @ref RTK_BT_LE_GAP_EVT_PHY_UPDATE_IND
  * @param[in] p_phy_param: PHY paramters
@@ -2855,7 +2907,6 @@ uint16_t rtk_bt_le_gap_set_phy(rtk_bt_le_set_phy_param_t *p_phy_param);
 
 #if defined(RTK_BLE_PRIVACY_SUPPORT) && RTK_BLE_PRIVACY_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_privacy_init(bool whitelist)
  * @brief     Enable and initialize privacy.
  * @param[in] whitelist: Enable white list or not
  * @return
@@ -2865,8 +2916,6 @@ uint16_t rtk_bt_le_gap_set_phy(rtk_bt_le_set_phy_param_t *p_phy_param);
 uint16_t rtk_bt_le_gap_privacy_init(bool whitelist);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_set_privacy_mode(rtk_bt_le_ident_addr_type_t peer_ident_addr_type,
-                                    uint8_t *peer_addr, rtk_bt_le_privacy_mode_t privacy_mode)
  * @brief     Set BLE privacy mode.
  * @param[in] peer_ident_addr_type: Peer indentity address type
  * @param[in] peer_addr: Peer identity address
@@ -2879,8 +2928,6 @@ uint16_t rtk_bt_le_gap_set_privacy_mode(rtk_bt_le_ident_addr_type_t peer_ident_a
 										uint8_t *peer_addr, rtk_bt_le_privacy_mode_t privacy_mode);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_read_local_resolv_addr(rtk_bt_le_ident_addr_type_t peer_ident_addr_type,
-                                            uint8_t *peer_addr, uint8_t *local_rpa)
  * @brief     Read local resolvable address.
  * @param[in] peer_ident_addr_type: Peer indentity address type
  * @param[in] peer_addr: Peer identity address
@@ -2893,8 +2940,6 @@ uint16_t rtk_bt_le_gap_read_local_resolv_addr(rtk_bt_le_ident_addr_type_t peer_i
 											  uint8_t *peer_addr, uint8_t *local_rpa);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_read_peer_resolv_addr(rtk_bt_le_ident_addr_type_t peer_ident_addr_type,
-                                            uint8_t *peer_addr, uint8_t *peer_rpa)
  * @brief     Read peer resolvable address.
  * @param[in] peer_ident_addr_type: Peer indentity address type
  * @param[in] peer_addr: Peer identity address
@@ -2908,7 +2953,15 @@ uint16_t rtk_bt_le_gap_read_peer_resolv_addr(rtk_bt_le_ident_addr_type_t peer_id
 #endif
 
 /**
- * @fn        uint16_t rtk_bt_le_sm_set_security_param(rtk_bt_le_security_param_t *p_sec_param)
+ * @brief     Set security pairing mode.
+ * @param[in] pairing_mode: Security pairing mode, default is @ref RTK_PAIRING_MODE_PAIRABLE
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_le_sm_set_pairing_mode(rtk_bt_le_pairing_mode_t pairing_mode);
+
+/**
  * @brief     Set security paramters.
  * @param[in] p_sec_param: Security paramters
  * @return
@@ -2918,7 +2971,15 @@ uint16_t rtk_bt_le_gap_read_peer_resolv_addr(rtk_bt_le_ident_addr_type_t peer_id
 uint16_t rtk_bt_le_sm_set_security_param(rtk_bt_le_security_param_t *p_sec_param);
 
 /**
- * @fn        uint16_t rtk_bt_le_sm_start_security(uint16_t conn_handle)
+ * @brief     Get security paramters.
+ * @param[out] p_sec_param: Security paramters
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_le_sm_get_security_param(rtk_bt_le_security_param_t *p_sec_param);
+
+/**
  * @brief     Start security. If security is completed, will cause event @ref RTK_BT_LE_GAP_EVT_AUTH_COMPLETE_IND
  * @param[in] conn_handle: Handle of connection to start security
  * @return
@@ -2928,7 +2989,6 @@ uint16_t rtk_bt_le_sm_set_security_param(rtk_bt_le_security_param_t *p_sec_param
 uint16_t rtk_bt_le_sm_start_security(uint16_t conn_handle);
 
 /**
- * @fn        uint16_t rtk_bt_le_sm_pairing_confirm(rtk_bt_le_pair_cfm_t *p_pair_cfm)
  * @brief     Confirm to continue pairing when use just work.
  * @param[in] p_pair_cfm: Pairing confirm parameter
  * @return
@@ -2938,7 +2998,6 @@ uint16_t rtk_bt_le_sm_start_security(uint16_t conn_handle);
 uint16_t rtk_bt_le_sm_pairing_confirm(rtk_bt_le_pair_cfm_t *p_pair_cfm);
 
 /**
- * @fn        uint16_t rtk_bt_le_sm_passkey_entry(rtk_bt_le_auth_key_input_t *p_key_input)
  * @brief     Input the authentication key.
  * @param[in] p_key_input: Auth key input parameter
  * @return
@@ -2948,7 +3007,6 @@ uint16_t rtk_bt_le_sm_pairing_confirm(rtk_bt_le_pair_cfm_t *p_pair_cfm);
 uint16_t rtk_bt_le_sm_passkey_entry(rtk_bt_le_auth_key_input_t *p_key_input);
 
 /**
- * @fn        uint16_t rtk_bt_le_sm_passkey_confirm(rtk_bt_le_auth_key_confirm_t *p_key_cfm)
  * @brief     Confirm the authentication key.
  * @param[in] p_key_cfm: Auth key confirmation parameter
  * @return
@@ -2959,7 +3017,6 @@ uint16_t rtk_bt_le_sm_passkey_confirm(rtk_bt_le_auth_key_confirm_t *p_key_cfm);
 
 #if defined(RTK_BLE_SMP_OOB_SUPPORT) && RTK_BLE_SMP_OOB_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_sm_set_oob_tk(rtk_bt_le_set_oob_key_t *p_set_oob_key)
  * @brief     Set OOB data.
  * @param[in] p_set_oob_key: OOB key data
  * @return
@@ -2970,7 +3027,6 @@ uint16_t rtk_bt_le_sm_set_oob_tk(rtk_bt_le_set_oob_key_t *p_set_oob_key);
 #endif
 
 /**
- * @fn        uint16_t rtk_bt_le_sm_get_bond_num(uint8_t *bond_num)
  * @brief     Get the number of bonded device.
  * @param[out] bond_num: The number of bonded device
  * @return
@@ -2980,7 +3036,6 @@ uint16_t rtk_bt_le_sm_set_oob_tk(rtk_bt_le_set_oob_key_t *p_set_oob_key);
 uint16_t rtk_bt_le_sm_get_bond_num(uint8_t *bond_num);
 
 /**
- * @fn        bool rtk_bt_le_sm_is_device_bonded(rtk_bt_le_addr_t *paddr)
  * @brief     Judge if the device is bonded.
  * @param[in] paddr: Device's address
  * @return
@@ -2990,7 +3045,6 @@ uint16_t rtk_bt_le_sm_get_bond_num(uint8_t *bond_num);
 bool rtk_bt_le_sm_is_device_bonded(rtk_bt_le_addr_t *paddr);
 
 /**
- * @fn        uint16_t rtk_bt_le_sm_get_bond_info(rtk_bt_le_bond_info_t *p_bond_info, uint8_t *size)
  * @brief     Get bonded device info.
  * @param[in] p_bond_info: The info of bonded device
  * @param[in] size: The num of bonded device we want get (buffer size of info)
@@ -3003,7 +3057,6 @@ bool rtk_bt_le_sm_is_device_bonded(rtk_bt_le_addr_t *paddr);
 uint16_t rtk_bt_le_sm_get_bond_info(rtk_bt_le_bond_info_t *p_bond_info, uint8_t *size);
 
 /**
- * @fn        uint16_t rtk_bt_le_sm_delete_bond_device(rtk_bt_le_addr_t *paddr)
  * @brief     Delete bonded device by address, will cause event @ref RTK_BT_LE_GAP_EVT_BOND_MODIFY_IND
  * @param[in] paddr: Bonded device's address
  * @return
@@ -3013,7 +3066,6 @@ uint16_t rtk_bt_le_sm_get_bond_info(rtk_bt_le_bond_info_t *p_bond_info, uint8_t 
 uint16_t rtk_bt_le_sm_delete_bond_device(rtk_bt_le_addr_t *paddr);
 
 /**
- * @fn        uint16_t rtk_bt_le_sm_clear_bond_list(void)
  * @brief     Clear bonded list, will cause event @ref RTK_BT_LE_GAP_EVT_BOND_MODIFY_IND
  * @return
  *            - 0  : Succeed
@@ -3022,7 +3074,6 @@ uint16_t rtk_bt_le_sm_delete_bond_device(rtk_bt_le_addr_t *paddr);
 uint16_t rtk_bt_le_sm_clear_bond_list(void);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_get_tx_pending_num(uint16_t conn_handle,uint16_t *tx_pending_num)
  * @brief     Get Tx pending num
  * @param[in]  conn_handle: Connection handle
  * @param[out] tx_pending_num: Tx pending num
@@ -3034,7 +3085,6 @@ uint16_t rtk_bt_le_gap_get_tx_pending_num(uint16_t conn_handle, uint16_t *tx_pen
 
 #if defined(RTK_BLE_5_2_POWER_CONTROL_SUPPORT) && RTK_BLE_5_2_POWER_CONTROL_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_read_local_tx_power(uint16_t conn_handle, rtk_bt_le_txpower_phy_t phy, int8_t *cur_txpower, int8_t *max_txpower)
  * @brief     Read the current and maximum transmit power levels of the local Controller on the ACL connection and the PHY
  * @param[in] conn_handle: Connection handle
  * @param[in] phy: @ref rtk_bt_le_txpower_phy_t
@@ -3049,7 +3099,6 @@ uint16_t rtk_bt_le_gap_read_local_tx_power(uint16_t conn_handle, rtk_bt_le_txpow
 										   int8_t *cur_txpower, int8_t *max_txpower);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_read_remote_tx_power(uint16_t conn_handle, rtk_bt_le_txpower_phy_t phy)
  * @brief     Read the transmit power level used by the remote Controller on the ACL connection and the PHY.
  *            Read result will be returned by callback @ref RTK_BT_LE_GAP_EVT_TXPOWER_REPORT_IND
  * @param[in] conn_handle: Connection handle
@@ -3061,7 +3110,6 @@ uint16_t rtk_bt_le_gap_read_local_tx_power(uint16_t conn_handle, rtk_bt_le_txpow
 uint16_t rtk_bt_le_gap_read_remote_tx_power(uint16_t conn_handle, rtk_bt_le_txpower_phy_t phy);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_tx_power_report_set(uint16_t conn_handle, bool local_enable, bool remote_enable)
  * @brief     Enable or disable reporting transmit power level changes in the local and remote Controllers for the ACL connection.
  * @param[in] conn_handle: Connection handle
  * @param[in] local_enable: Enable or disable local transmit power change reports.
@@ -3076,7 +3124,6 @@ uint16_t rtk_bt_le_gap_tx_power_report_set(uint16_t conn_handle, bool local_enab
 #if defined(RTK_BLE_5_1_CTE_SUPPORT) && RTK_BLE_5_1_CTE_SUPPORT
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_get_antenna_info(rtk_bt_le_gap_antenna_info_t *antenna_info)
  * @brief     Get antenna information supprted by the controller
  * @param[out] antenna_info: Antenna information
  * @return
@@ -3088,10 +3135,6 @@ uint16_t rtk_bt_le_gap_get_antenna_info(rtk_bt_le_gap_antenna_info_t *antenna_in
 #if ((defined(RTK_BLE_5_0_AE_ADV_SUPPORT) && RTK_BLE_5_0_AE_ADV_SUPPORT) && \
     (defined(RTK_BLE_5_0_PA_ADV_SUPPORT) && RTK_BLE_5_0_PA_ADV_SUPPORT))
 /**
- * @fn        uint16_t rtk_bt_le_gap_connless_cte_tx_start(rtk_bt_le_gap_connless_cte_tx_param_t *p_cte_param,
-                                                            rtk_bt_le_ext_adv_param_t *p_eadv_param,
-                                                            rtk_bt_le_pa_param_t *p_pa_param,
-                                                            uint8_t *p_adv_handle)
  * @brief     Start connectionless CTE transmit.
  * @param[in] p_cte_param: connetionless CTE transmit parameters
  * @param[in] p_eadv_param: extended advertising parameters
@@ -3107,7 +3150,6 @@ uint16_t rtk_bt_le_gap_connless_cte_tx_start(rtk_bt_le_gap_connless_cte_tx_param
 											 uint8_t *p_adv_handle);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_connless_cte_tx_stop(uint8_t adv_handle)
  * @brief     Stop connectionless CTE transmit.
  * @param[in] adv_handle: advertising handle
  * @return
@@ -3119,7 +3161,6 @@ uint16_t rtk_bt_le_gap_connless_cte_tx_stop(uint8_t adv_handle);
 #endif /* RTK_BLE_5_0_AE_ADV_SUPPORT && RTK_BLE_5_0_PA_ADV_SUPPORT */
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_connless_cte_rx_start(uint8_t sync_id, rtk_bt_le_gap_connless_cte_rx_param_t *params)
  * @brief     Start connectionless CTE receive.
  * @param[in] sync_id: Identify the periodic advertising train.
  * @param[in] params: connetionless CTE receive paramters
@@ -3130,7 +3171,6 @@ uint16_t rtk_bt_le_gap_connless_cte_tx_stop(uint8_t adv_handle);
 uint16_t rtk_bt_le_gap_connless_cte_rx_start(uint8_t sync_id, rtk_bt_le_gap_connless_cte_rx_param_t *params);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_connless_cte_rx_stop(uint8_t sync_id)
  * @brief     Stop connectionless CTE receive.
  * @param[in] sync_id: Identify the periodic advertising train.
  * @return
@@ -3140,7 +3180,6 @@ uint16_t rtk_bt_le_gap_connless_cte_rx_start(uint8_t sync_id, rtk_bt_le_gap_conn
 uint16_t rtk_bt_le_gap_connless_cte_rx_stop(uint8_t sync_id);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_conn_cte_tx_start(uint16_t conn_handle, rtk_bt_le_gap_conn_cte_tx_param_t *params)
  * @brief     Start connection-oriented CTE transmit.
  * @param[in] conn_handle: connection handle
  * @param[in] params: connection-oriented CTE transmit paramters
@@ -3151,7 +3190,6 @@ uint16_t rtk_bt_le_gap_connless_cte_rx_stop(uint8_t sync_id);
 uint16_t rtk_bt_le_gap_conn_cte_tx_start(uint16_t conn_handle, rtk_bt_le_gap_conn_cte_tx_param_t *params);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_conn_cte_tx_stop(uint16_t conn_handle)
  * @brief     Stop connection-oriented CTE transmit.
  * @param[in] conn_handle: connection handle
  * @return
@@ -3161,8 +3199,6 @@ uint16_t rtk_bt_le_gap_conn_cte_tx_start(uint16_t conn_handle, rtk_bt_le_gap_con
 uint16_t rtk_bt_le_gap_conn_cte_tx_stop(uint16_t conn_handle);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_conn_cte_rx_start(uint16_t conn_handle,
- *                                                     rtk_bt_le_gap_conn_cte_rx_param_t *rx_params)
  * @brief     Start connection-oriented CTE receive.
  * @param[in] conn_handle: connection handle
  * @param[in] rx_params:  connection-oriented CTE receive paramters
@@ -3174,7 +3210,6 @@ uint16_t rtk_bt_le_gap_conn_cte_rx_start(uint16_t conn_handle,
 										 rtk_bt_le_gap_conn_cte_rx_param_t *rx_params);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_conn_cte_rx_stop(uint16_t conn_handle)
  * @brief     Stop connection-oriented CTE receive.
  * @param[in] conn_handle: connection handle
  * @return
@@ -3186,7 +3221,6 @@ uint16_t rtk_bt_le_gap_conn_cte_rx_stop(uint16_t conn_handle);
 
 #if defined(RTK_BLE_5_4_PA_RSP_SUPPORT) && RTK_BLE_5_4_PA_RSP_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_pawr_set_subevent_data(rtk_bt_le_gap_pawr_subevent_data_t *param)
  * @brief     Set the data for one subevent of a Periodic Advertising with Responses Advertiser in reply data request.
  * @param[in] param: parameter @rtk_bt_le_gap_pawr_subevent_data_t
  * @return
@@ -3198,7 +3232,6 @@ uint16_t rtk_bt_le_gap_pawr_set_subevent_data(rtk_bt_le_gap_pawr_subevent_data_t
 
 #if defined(RTK_BLE_5_4_PA_SYNC_RSP_SUPPORT) && RTK_BLE_5_4_PA_SYNC_RSP_SUPPORT
 /**
- * @fn        uint16_t rtk_bt_le_gap_pawr_set_response_data(rtk_bt_le_gap_pawr_set_response_t *param)
  * @brief     Set the data for a response slot in a specific subevent of the PAwR.
  * @param[in] param: parameter @rtk_bt_le_gap_pawr_set_response_t
  * @return
@@ -3208,7 +3241,6 @@ uint16_t rtk_bt_le_gap_pawr_set_subevent_data(rtk_bt_le_gap_pawr_subevent_data_t
 uint16_t rtk_bt_le_gap_pawr_set_response_data(rtk_bt_le_gap_pawr_set_response_t *param);
 
 /**
- * @fn        uint16_t rtk_bt_le_gap_pawr_sync_subevent(rtk_bt_le_gap_pawr_sync_subevent_t *param)
  * @brief     Synchronize with a subset of subevents.
  * @param[in] param: parameter @rtk_bt_le_gap_pawr_sync_subevent_t
  * @return
@@ -3217,6 +3249,84 @@ uint16_t rtk_bt_le_gap_pawr_set_response_data(rtk_bt_le_gap_pawr_set_response_t 
  */
 uint16_t rtk_bt_le_gap_pawr_sync_subevent(rtk_bt_le_gap_pawr_sync_subevent_t *param);
 #endif
+
+#if defined(RTK_BLE_COC_SUPPORT) && RTK_BLE_COC_SUPPORT
+/**
+ * @brief     Register or unregister le psm for le credit based connection-oriented channel(coc).
+ * @param[in] is_register: 1 for register, 0 for unregister
+ * @param[in] le_psm: LE PSM value
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_le_gap_coc_register_psm(uint8_t is_register, uint16_t le_psm);
+
+/**
+ * @brief     Set security permission for le psm
+ * @param[in] le_psm: LE PSM value
+ * @param[in] active: 1 for set security, 0 for clear the set for this LE PSM
+ * @param[in] sec_mode: COC security mode to set
+ * @param[in] key_size: Security key size, usually set as 16(common encryption key size)
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_le_gap_coc_set_psm_security(uint16_t le_psm, uint8_t active,
+											rtk_bt_le_coc_security_mode_t sec_mode,
+											uint8_t key_size);
+
+/**
+ * @brief     Set le coc parameter
+ * @param[in] param_type: Parameter type
+ * @param[in] value: Parameter value
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_le_gap_coc_set_param(rtk_bt_le_coc_param_type_t param_type, uint16_t value);
+
+/**
+ * @brief     Get le coc channel parameter
+ * @param[in] param_type: Parameter type
+ * @param[in] cid: COC channel ID
+ * @param[out] value: Pointer of parameter value to get
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_le_gap_coc_get_chan_param(rtk_bt_le_coc_chan_param_type_t param_type,
+										  uint16_t cid, uint16_t *value);
+
+/**
+ * @brief     COC connection request, will cause event @ref RTK_BT_LE_GAP_EVT_COC_CONNECT_IND
+ * @param[in] conn_handle: Connection handle
+ * @param[in] le_psm: LE PSM value
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_le_gap_coc_connect(uint16_t conn_handle, uint16_t le_psm);
+
+/**
+ * @brief     COC disconnection request, will cause event @ref RTK_BT_LE_GAP_EVT_COC_DISCONNECT_IND
+ * @param[in] cid: COC channel ID
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_le_gap_coc_disconnect(uint16_t cid);
+
+/**
+ * @brief     COC send data, will cause event @ref RTK_BT_LE_GAP_EVT_COC_SEND_DATA_RESULT_IND
+ * @param[in] cid: COC channel ID
+ * @param[in] len: Length of data
+ * @param[in] data: Pointer of data
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_le_gap_coc_send_data(uint16_t cid, uint16_t len, uint8_t *data);
+#endif /* RTK_BLE_COC_SUPPORT */
 
 /**
  * @}

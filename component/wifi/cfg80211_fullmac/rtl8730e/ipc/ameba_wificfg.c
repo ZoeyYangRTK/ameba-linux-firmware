@@ -1,0 +1,1 @@
+../../../../soc/amebasmart/usrcfg/ameba_wificfg.c

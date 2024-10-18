@@ -1,11 +1,12 @@
 #include "platform_autoconf.h"
 #include "vfs.h"
 #include "vfs_fatfs.h"
-#if FATFS_DISK_FLASH
+#if defined(FATFS_DISK_FLASH) && FATFS_DISK_FLASH
 #include "platform_stdlib.h"
 #include "basic_types.h"
 #include <stdint.h>
 #include "os_wrapper.h"
+#include "diag.h"
 static fatfs_flash_params_t fatfs_flash_param;
 static uint8_t fatfs_flash_init_done = 0;
 static FIL     fatfs_flash_file;
@@ -15,12 +16,12 @@ extern DRESULT FLASH_disk_ioctl(BYTE cmd, void *buff);
 int fatfs_flash_close(void)
 {
 	if (fatfs_flash_init_done) {
-		if (f_mount(NULL, fatfs_flash_param.drv, 1) != FR_OK) {
-			printf("FATFS unmount flash logical drive fail.\n");
+		if (f_unmount(fatfs_flash_param.drv) != FR_OK) {
+			VFS_DBG(VFS_ERROR, "FATFS unmount flash logical drive fail.");
 		}
 
 		if (FATFS_UnRegisterDiskDriver(fatfs_flash_param.drv_num)) {
-			printf("Unregister flash disk driver from FATFS fail.\n");
+			VFS_DBG(VFS_ERROR, "Unregister flash disk driver from FATFS fail.");
 		}
 
 		fatfs_flash_init_done = 0;
@@ -39,19 +40,18 @@ int fatfs_flash_init(void)
 		uint8_t *work_buffer = (uint8_t *)rtos_mem_malloc(4096);
 
 		// Register disk driver to Fatfs
-		printf("Register flash disk driver to Fatfs.\n\r");
+		VFS_DBG(VFS_INFO, "Register flash disk driver to Fatfs.");
 		fatfs_flash_param.drv_num = FATFS_RegisterDiskDriver(&FLASH_disk_Driver);
 
 		if (fatfs_flash_param.drv_num < 0) {
-			printf("Register flash disk driver to FATFS fail.\n\r");
+			VFS_DBG(VFS_ERROR, "Register flash disk driver to FATFS fail.");
 		} else {
 			Fatfs_ok = 1;
 			fatfs_flash_param.drv[0] = fatfs_flash_param.drv_num + '0';
 			fatfs_flash_param.drv[1] = ':';
 			fatfs_flash_param.drv[2] = '/';
 			fatfs_flash_param.drv[3] = 0;
-
-			printf("Flash drive path: %s\n", fatfs_flash_param.drv);
+			VFS_DBG(VFS_INFO, "Flash drive path: %s ", fatfs_flash_param.drv);
 		}
 		if (!Fatfs_ok) {
 			ret = -1;
@@ -61,7 +61,7 @@ int fatfs_flash_init(void)
 		res1 = f_mount(&fatfs_flash_param.fs, fatfs_flash_param.drv, 1);
 
 		// test flash
-		printf("Test flash drive (file: %s)\n\n", flash_test_fn);
+		VFS_DBG(VFS_INFO, "Test flash drive (file: %s)", flash_test_fn);
 		memset(path, 0, sizeof(path));
 		strcpy(path, fatfs_flash_param.drv);
 
@@ -75,18 +75,18 @@ int fatfs_flash_init(void)
 			opt.au_size = 0;
 			ret = f_mkfs(fatfs_flash_param.drv, &opt, work_buffer, 4096);
 			if (ret != FR_OK) {
-				printf("Create FAT volume on Flash fail. (%d)\n\r", ret);
+				VFS_DBG(VFS_ERROR, "Create FAT volume on Flash fail. (%d) ", ret);
 				goto fatfs_init_err;
 			}
 
 			ret = f_mount(&fatfs_flash_param.fs, fatfs_flash_param.drv, 0);
 			if (ret != FR_OK) {
-				printf("FATFS mount logical drive on Flash fail.\n\r");
+				VFS_DBG(VFS_ERROR, "FATFS mount logical drive on Flash fail.");
 				goto fatfs_init_err;
 			}
-			printf("flash mkfs and mount OK\n\r");
+			VFS_DBG(VFS_INFO, "flash mkfs and mount OK");
 		} else {
-			printf("flash mount OK\n\r");
+			VFS_DBG(VFS_INFO, "flash mount OK");
 		}
 		fatfs_flash_init_done = 1;
 	} else {

@@ -4,6 +4,7 @@
 #include "ff.h"
 #include "time.h"
 #include "os_wrapper.h"
+#include "diag.h"
 
 // return drv_num assigned
 int FATFS_RegisterDiskDriver(ll_diskio_drv *drv)
@@ -16,7 +17,7 @@ int FATFS_RegisterDiskDriver(ll_diskio_drv *drv)
 		disk.nbr++;
 		drv_num = drv->drv_num;
 	}
-	printf("FATFS Register: disk driver %d\n\r", drv_num);
+	VFS_DBG(VFS_INFO, "FATFS Register: disk driver %d ", drv_num);
 	return drv_num;
 }
 
@@ -103,6 +104,11 @@ int fatfs_open(const char *filename, const char *mode, vfs_file *finfo)
 
 	res = f_open(fil, filename, mode_mapping);
 	if (res != 0) {
+		if (res == FR_NO_FILE) {
+			VFS_DBG(VFS_WARNING, "file is not exist");
+		} else {
+			VFS_DBG(VFS_ERROR, "vfs-fatfs fopen error %d \r\n", res);
+		}
 		rtos_mem_free(fil);
 		return -1;
 	}
@@ -341,7 +347,7 @@ int fatfs_closedir(vfs_file *finfo)
 int fatfs_mkdir(const char *pathname)
 {
 	FRESULT res = f_mkdir(pathname);
-	if (res > 0) {
+	if (res > 0 && res != FR_EXIST) {
 		VFS_DBG(VFS_ERROR, "vfs-fatfs mkdir error %d \r\n", res);
 	}
 	return -res;
@@ -457,12 +463,12 @@ int fatfs_mount(int interface)
 	int ret = -1;
 	if (interface == VFS_INF_SD) {
 		VFS_DBG(VFS_INFO, "sd mount");
-#if FATFS_DISK_SD
+#if defined(FATFS_DISK_SD) && FATFS_DISK_SD
 		ret = fatfs_sd_init();
 #endif
 	} else if (interface == VFS_INF_FLASH) {
 		VFS_DBG(VFS_INFO, "flash mount");
-#if FATFS_DISK_FLASH
+#if defined(FATFS_DISK_FLASH) && FATFS_DISK_FLASH
 		ret = fatfs_flash_init();
 #endif
 	} else {
@@ -477,12 +483,12 @@ int fatfs_ummount(int interface)
 	int ret = 0;
 	if (interface == VFS_INF_SD) {
 		VFS_DBG(VFS_INFO, "sd unmount");
-#if FATFS_DISK_SD
+#if defined(FATFS_DISK_SD) && FATFS_DISK_SD
 		ret = fatfs_sd_close();
 #endif
 	} else if (interface == VFS_INF_FLASH) {
 		VFS_DBG(VFS_INFO, "flash unmount");
-#if FATFS_DISK_FLASH
+#if defined(FATFS_DISK_FLASH) && FATFS_DISK_FLASH
 		ret = fatfs_flash_close();
 #endif
 	} else {

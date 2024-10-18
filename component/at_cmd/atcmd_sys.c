@@ -8,16 +8,53 @@
 
 #include <sys_api.h>
 #include <flash_api.h>
-
+#include "ameba_rtos_version.h"
 #include <build_info.h>
-#include "log_service.h"
-#include "atcmd_sys.h"
-#include "atcmd_wifi.h"
-#ifdef CONFIG_NEW_ATCMD
+#include "atcmd_service.h"
+#ifndef CONFIG_MP_INCLUDED
 #include "atcmd_mqtt.h"
-#include "atcmd_bt_mp.h"
-#ifdef CONFIG_LWIP_LAYER
-#include "atcmd_lwip.h"
+#endif
+#ifndef CONFIG_MP_SHRINK
+#include "atcmd_wifi.h"
+#endif
+
+#include "FreeRTOS.h"
+#if (configGENERATE_RUN_TIME_STATS == 1)
+#include "task.h"
+#endif
+
+#ifndef CONFIG_INIC_NO_FLASH
+#if (configGENERATE_RUN_TIME_STATS == 1)
+typedef struct delta_status_s {
+	int running_tick;
+	const char *name;
+	char bak_name[32];
+	void *task;
+	int task_id;
+	int priority;
+	eTaskState state;
+} delta_status_t;
+
+#define TASK_CNT 64
+typedef struct task_status_s {
+	TaskStatus_t status[2][TASK_CNT];
+	TaskStatus_t *last;
+	TaskStatus_t *curr;
+	int last_cnt;
+	int curr_cnt;
+	delta_status_t delta[TASK_CNT];
+} task_status_t;
+
+typedef struct status_cmd_para_s {
+	int time;
+	int count;
+} status_cmd_para_t;
+#endif /* configGENERATE_RUN_TIME_STATS */
+#endif /* CONFIG_INIC_NO_FLASH */
+
+#ifdef CONFIG_MP_INCLUDED
+#if defined(configUSE_TRACE_FACILITY) && (configUSE_TRACE_FACILITY == 1) && (configUSE_STATS_FORMATTING_FUNCTIONS == 1)
+extern void vTaskList(char *pcWriteBuffer);
 #endif
 #endif
 
@@ -60,6 +97,11 @@ static void update_status(void)
 	if (task_status->last == NULL && task_status->curr == NULL) {
 		task_status->last = task_status->status[0];
 		task_status->curr = task_status->status[1];
+	}
+
+	if (uxTaskGetNumberOfTasks() > TASK_CNT) {
+		RTK_LOGW(NOTAG, "number of tasks : %d(exceed TASK_CNT)! Please enlarge TASK_CNT\r\n", uxTaskGetNumberOfTasks());
+		return;
 	}
 
 	/* update last */
@@ -201,10 +243,11 @@ AT command process:
 ****************************************************************/
 void at_cpuload(void *arg)
 {
+	const int mode_idx = 1, time_idx = 2, count_idx = 3;
 	int argc = 0;
 	int error_no = 0;
 	char *argv[MAX_ARGC] = {0};
-	int top_mode = 0;
+	enum atcmd_cpuload_type_e top_mode = atcmd_cpuload_type_invalid;
 
 	para_in.time = 1;
 	para_in.count = -1;
@@ -217,14 +260,14 @@ void at_cpuload(void *arg)
 		error_no = 1;
 		goto end;
 	}
-	if (argc == 3) {
-		top_mode = atoi(argv[1]);
+
+	if (strlen(argv[mode_idx]) != 0) {
+		top_mode = atoi(argv[mode_idx]);
+	}
+	if (argc > time_idx && strlen(argv[time_idx]) != 0) {
 		para_in.time = (atoi(argv[2])) > 0 ? (atoi(argv[2])) : 1;
-	} else if (argc == 2) {
-		top_mode = atoi(argv[1]);
-	} else {/* argc == 4 */
-		top_mode = atoi(argv[1]);
-		para_in.time = (atoi(argv[2])) > 0 ? (atoi(argv[2])) : 1;
+	}
+	if (argc > count_idx && strlen(argv[count_idx]) != 0) {
 		para_in.count = (atoi(argv[3])) > 0 ? (atoi(argv[3])) - 1 : -1;
 	}
 
@@ -239,7 +282,7 @@ void at_cpuload(void *arg)
 
 	at_printf("current mode: %d time: %d(s) count: %d (-1 for infinite)\r\n", top_mode, para_in.time, para_in.count);
 	switch (top_mode) {
-	case 0:
+	case atcmd_cpuload_type_update:
 		if (top_exit_sema)	{
 			break;
 		}
@@ -248,12 +291,12 @@ void at_cpuload(void *arg)
 		rtos_sema_create(&top_exit_sema, 0, 1);
 		rtos_task_create(NULL, ((const char *)"cpu_stat_thread"), cpu_stat_thread, &para_in, 4096 * 4, configMAX_PRIORITIES - 1);
 		break;
-	case 1:
+	case atcmd_cpuload_type_sema:
 		if (top_exit_sema) {
 			rtos_sema_give((rtos_sema_t) top_exit_sema);
 		}
 		break;
-	case 2:
+	case atcmd_cpuload_type_tick:
 		if (top_exit_sema)	{
 			break;
 		}
@@ -261,7 +304,7 @@ void at_cpuload(void *arg)
 		last_tick = portGET_RUN_TIME_COUNTER_VALUE();
 		update_status();
 		break;
-	case 3:
+	case atcmd_cpuload_type_stop:
 		if (top_exit_sema)	{
 			break;
 		}
@@ -296,6 +339,11 @@ AT command process:
 ****************************************************************/
 void at_test(void *arg)
 {
+	if (arg) {
+		at_printf("\r\n arg len = %d \r\n", strlen((char *)arg));
+		at_printf("\r\n arg = %s \r\n", (char *)arg);
+	}
+
 	UNUSED(arg);
 	at_printf("\r\n%sOK\r\n", "+TEST:");
 }
@@ -318,6 +366,7 @@ void at_list(void *arg)
 	at_printf("Common AT Command:\r\n");
 	print_system_at();
 
+#ifdef CONFIG_WLAN
 #ifndef CONFIG_MP_SHRINK
 	/* Wifi commands. */
 	at_printf("Wi-Fi AT Command:\r\n");
@@ -330,6 +379,13 @@ void at_list(void *arg)
 	print_lwip_at();
 #endif
 
+#ifndef CONFIG_MP_INCLUDED
+	/* MQTT commands. */
+	at_printf("MQTT AT command:\r\n");
+	print_mqtt_at();
+#endif
+#endif
+
 #if defined(CONFIG_BT) && CONFIG_BT
 	/* Bluetooth commands. */
 	at_printf("BT AT command:\r\n");
@@ -339,11 +395,7 @@ void at_list(void *arg)
 #endif
 #endif
 
-#ifndef CONFIG_MP_INCLUDED
-	/* MQTT commands. */
-	at_printf("MQTT AT command:\r\n");
-	print_mqtt_at();
-#endif
+
 
 	at_printf("\r\n%sOK\r\n", "+LIST:");
 }
@@ -373,9 +425,12 @@ void at_state(void *arg)
 	UNUSED(arg);
 #if defined(configUSE_TRACE_FACILITY) && (configUSE_TRACE_FACILITY == 1) && (configUSE_STATS_FORMATTING_FUNCTIONS == 1)
 	{
-		signed char pcWriteBuffer[1024];
+		char *pcWriteBuffer;
+		int task_n = uxTaskGetNumberOfTasks();
+		pcWriteBuffer = (char *)rtos_mem_malloc(task_n * 45);
 		vTaskList((char *)pcWriteBuffer);
-		at_printf("Task List: \n\r%s\n\r", pcWriteBuffer);
+		at_printf("Task List: \r\n%s\r\n", pcWriteBuffer);
+		rtos_mem_free(pcWriteBuffer);
 	}
 #endif
 
@@ -404,8 +459,14 @@ void at_gmr(void *arg)
 
 	UNUSED(arg);
 
-	ChipInfo_GetSocName();
-	ChipInfo_GetLibVersion();
+	u32 buflen = 1024;
+	char *buf = rtos_mem_malloc(buflen);
+	at_printf("AMEBA-RTOS SDK VERSION: %d.%d.%d\n", AMEBA_RTOS_VERSION_MAJOR, AMEBA_RTOS_VERSION_MINOR, AMEBA_RTOS_VERSION_PATCH);
+	ChipInfo_GetSocName_ToBuf(buf, buflen - 1);
+	at_printf("%s", buf);
+	ChipInfo_GetLibVersion_ToBuf(buf, buflen - 1);
+	at_printf("%s", buf);
+	rtos_mem_free(buf);
 
 	strncpy(at_buf, ATCMD_VERSION"."ATCMD_SUBVERSION"."ATCMD_REVISION, sizeof(at_buf));
 	strncpy(fw_buf, SDK_VERSION, sizeof(fw_buf));
@@ -429,7 +490,8 @@ AT command process:
 ****************************************************************/
 void at_log(void *arg)
 {
-	int argc = 0, temp = 0, mode = -1, error_no = 0;
+	int argc = 0, error_no = 0;
+	enum atcmd_log_type_e mode = atcmd_log_type_invalid;
 	char *argv[MAX_ARGC] = {0};
 	rtk_log_level_t log_level;
 
@@ -441,60 +503,55 @@ void at_log(void *arg)
 
 	argc = parse_param(arg, argv);
 	if ((argc > 1) && (argv[1] != NULL)) {
-		mode = atoi(argv[1]);
+		mode = (enum atcmd_log_type_e)atoi(argv[1]);
 	}
 
+	switch (mode) {
 	/* Get. */
-	if (mode == 0) {
-		if ((argc != 3) || (argv[2] == NULL)) {
+	case atcmd_log_type_get:
+		if ((argc != 3) || (strlen(argv[2]) == 0)) {
 			RTK_LOGA(NOTAG, "[LOG] Invalid get parameters.\r\n");
 			error_no = 1;
 			goto end;
 		}
 		log_level = rtk_log_level_get(argv[2]);
 		at_printf("<%s> level is %d\r\n", argv[2], log_level);
-	}
+		break;
 
 	/* Set. */
-	else if (mode == 1) {
-		if ((argc != 4) || (argv[2] == NULL) || (argv[3] == NULL)) {
+	case atcmd_log_type_set:
+		if ((argc != 4) || (strlen(argv[2]) == 0) || (strlen(argv[3]) == 0)) {
 			RTK_LOGA(NOTAG, "[LOG] Invalid set parameters.\r\n");
 			error_no = 1;
 			goto end;
 		}
-		temp = atoi(argv[3]);
-		if ((temp < RTK_LOG_NONE) || (temp > RTK_LOG_DEBUG)) {
-			RTK_LOGA(NOTAG, "[LOG] Invalid log level %d.\r\n", temp);
-			error_no = 1;
-			goto end;
-		}
-		log_level = (rtk_log_level_t)temp;
+		log_level = (rtk_log_level_t)atoi(argv[3]);
 		rtk_log_level_set(argv[2], log_level);
-	}
+		break;
 
 	/* Print all. */
-	else if (mode == 2) {
+	case atcmd_log_type_print_all:
 		if (argc != 2) {
 			RTK_LOGA(NOTAG, "[LOG] Invalid parameter number.\r\n");
 			error_no = 1;
 			goto end;
 		}
 		rtk_log_array_print(rtk_log_tag_array);
-	}
+		break;
 
 	/* Clean all. */
-	else if (mode == 3) {
+	case atcmd_log_type_clear_all:
 		if (argc != 2) {
 			RTK_LOGA(NOTAG, "[LOG] Invalid parameter number.\r\n");
 			error_no = 1;
 			goto end;
 		}
 		rtk_log_array_clear();
-	}
+		break;
 
 	/* Invalid. */
-	else {
-		RTK_LOGA(NOTAG, "[LOG] Invalid get_set %d.\r\n", mode);
+	default:
+		RTK_LOGA(NOTAG, "[LOG] Invalid mode %d.\r\n", mode);
 		error_no = 1;
 		goto end;
 	}
@@ -614,9 +671,5 @@ void print_system_at(void)
 
 void at_sys_init(void)
 {
-	log_service_add_table(at_sys_items, sizeof(at_sys_items) / sizeof(at_sys_items[0]));
+	atcmd_service_add_table(at_sys_items, sizeof(at_sys_items) / sizeof(at_sys_items[0]));
 }
-
-#ifdef SUPPORT_LOG_SERVICE
-log_module_init(at_sys_init);
-#endif

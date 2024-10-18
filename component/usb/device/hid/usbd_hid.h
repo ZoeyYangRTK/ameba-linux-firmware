@@ -60,10 +60,16 @@
 #define USBD_HID_STRING_STRING_INTERFACE		4
 
 // Endpoint address
+#if defined (CONFIG_AMEBAGREEN2)
+#define USBD_HID_INTERRUPT_OUT_EP_ADDRESS		0x02
+#define USBD_HID_INTERRUPT_IN_EP_ADDRESS		0x82
+#else
 #define USBD_HID_INTERRUPT_OUT_EP_ADDRESS		0x02
 #define USBD_HID_INTERRUPT_IN_EP_ADDRESS		0x81
-#define USBD_HID_DEFAULT_INT_IN_XFER_SIZE		512
-#define USBD_HID_DEFAULT_INT_OUT_XFER_SIZE		1024
+#endif
+
+#define USBD_HID_HS_INT_MAX_PACKET_SIZE                64
+#define USBD_HID_FS_INT_MAX_PACKET_SIZE                64
 
 #define USBD_HID_DESC_SIZE						0x9
 
@@ -87,26 +93,23 @@ typedef struct {
 } usbd_hid_usr_cb_t;
 
 typedef struct {
-	u32 intr_in_state;
-	u16 intr_in_buf_len;
-	u8 *intr_in_buf;
-
-#if USBD_HID_DEVICE_TYPE == USBD_HID_KEYBOARD_DEVICE
-	u32 intr_out_buf_size;
-	u8  *intr_out_buf;
-#endif
-
-	u8 protocol;
-	u8 idle_rate;
-
-	__IO u8 is_ready;
-	__IO u8 is_tx_busy;
-
-	u8 *ctrl_buf;
 	usb_setup_req_t ctrl_req;
-
 	usbd_hid_usr_cb_t *cb;
 	usb_dev_t *dev;
+#if USBD_HID_DEVICE_TYPE == USBD_HID_KEYBOARD_DEVICE
+	u32 intr_out_buf_size;
+#endif
+	u8 *intr_in_buf;
+	u8 *ctrl_buf;
+#if USBD_HID_DEVICE_TYPE == USBD_HID_KEYBOARD_DEVICE
+	u8  *intr_out_buf;
+#endif
+	u16 intr_in_buf_len;
+	u8 protocol;
+	u8 idle_rate;
+	__IO u8 is_ready : 1;
+	__IO u8 is_tx_busy : 1;
+	u8 intr_in_state : 1;
 } usbd_hid_t;
 
 int usbd_hid_init(u16 tx_buf_len, usbd_hid_usr_cb_t *cb);

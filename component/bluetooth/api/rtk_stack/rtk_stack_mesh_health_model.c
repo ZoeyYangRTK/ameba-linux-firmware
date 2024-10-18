@@ -62,7 +62,7 @@ static int32_t health_client_data(const mesh_model_info_p pmodel_info, uint32_t 
 	}
 	break;
 	default:
-		printf("[%s] Unknown type:%d\r\n", __func__, (int)type);
+		BT_LOGE("[%s] Unknown type:%d\r\n", __func__, (int)type);
 		break;
 	}
 
@@ -80,7 +80,7 @@ uint16_t bt_mesh_health_client_model_act_handle(rtk_bt_cmd_t *p_cmd)
 {
 	uint16_t ret = RTK_BT_MESH_MSG_SEND_CAUSE_FAIL;
 	if (true != bt_stack_profile_check(RTK_BT_PROFILE_MESH)) {
-		printf("Error: BLE MESH profile is not initiated\r\n");
+		BT_LOGE("Error: BLE MESH profile is not initiated\r\n");
 		ret = RTK_BT_ERR_UNSUPPORTED;
 		goto end;
 	}
@@ -121,10 +121,9 @@ uint16_t bt_mesh_health_client_model_act_handle(rtk_bt_cmd_t *p_cmd)
 		break;
 	}
 	default:
-		printf("[%s] Unknown p_cmd->act:%d\r\n", __func__, p_cmd->act);
+		BT_LOGE("[%s] Unknown p_cmd->act:%d\r\n", __func__, p_cmd->act);
 		break;
 	}
-	ret = ret | RTK_BT_STACK_MESH_ERROR_FLAG;
 end:
 	p_cmd->ret = ret;
 	osif_sem_give(p_cmd->psem);
@@ -136,7 +135,7 @@ end:
 
 static mesh_model_info_t health_server_model;
 
-uint8_t fault_store[HEALTH_FAULT_ARRAY_LEN];
+uint8_t fault_store[HEALTH_FAULT_ARRAY_LEN + 2];
 
 uint8_t current_store[4 + HEALTH_FAULT_ARRAY_LEN];
 
@@ -159,7 +158,7 @@ static int32_t health_server_data(const mesh_model_info_p pmodel_info, uint32_t 
 			fault_get->company_id = p_get_data->company_id;
 			fault_get->fault_array = fault_store;
 			rtk_bt_evt_indicate(p_evt, &cb_ret);
-			p_get_data->fault_array = fault_store;//reserve one byte to store length
+			p_get_data->fault_array = fault_store;//reserve one byte to store length + one byte to store test id
 		}
 	}
 	break;
@@ -176,7 +175,7 @@ static int32_t health_server_data(const mesh_model_info_p pmodel_info, uint32_t 
 			fault_clear->company_id = p_get_data->company_id;
 			fault_clear->fault_array = fault_store;
 			rtk_bt_evt_indicate(p_evt, &cb_ret);
-			p_get_data->fault_array = fault_store;//reserve one byte to store length
+			p_get_data->fault_array = fault_store;//reserve one byte to store length + one byte to store test id
 		}
 	}
 	break;
@@ -194,7 +193,7 @@ static int32_t health_server_data(const mesh_model_info_p pmodel_info, uint32_t 
 			fault_test->test_id = p_get_data->test_id;
 			fault_test->fault_array = fault_store;
 			rtk_bt_evt_indicate(p_evt, &cb_ret);
-			p_get_data->fault_array = fault_store;//reserve one byte to store length
+			p_get_data->fault_array = fault_store;//reserve one byte to store length + one byte to store test id
 		}
 	}
 	break;
@@ -252,14 +251,14 @@ static int32_t health_server_data(const mesh_model_info_p pmodel_info, uint32_t 
 		// current_store style: 1 byte(length) + 1 byte(test id) + 2 byte(company id) + n bytes(faults)
 		// faults length = length - 1
 		p_get_data->test_id = current_store[1];
-		p_get_data->company_id = MESH_LE_EXTRN2WORD(&current_store[2]);
+		p_get_data->company_id = LE_TO_U16(&current_store[2]);
 		p_get_data->fault_count = current_store[0] - 3;
 		memcpy(p_get_data->fault_array, &current_store[4], current_store[0] - 3);
 		return 0;
 	}
 	break;
 	default:
-		printf("[%s] Unknown type:%d\r\n", __func__, (int)type);
+		BT_LOGE("[%s] Unknown type:%d\r\n", __func__, (int)type);
 		break;
 	}
 	return 0;
@@ -283,7 +282,7 @@ uint16_t bt_mesh_health_server_model_act_handle(rtk_bt_cmd_t *p_cmd)
 {
 	uint16_t ret = RTK_BT_MESH_MSG_SEND_CAUSE_FAIL;
 	if (true != bt_stack_profile_check(RTK_BT_PROFILE_MESH)) {
-		printf("Error: BLE MESH profile is not initiated\r\n");
+		BT_LOGE("Error: BLE MESH profile is not initiated\r\n");
 		ret = RTK_BT_ERR_UNSUPPORTED;
 		goto end;
 	}
@@ -317,11 +316,22 @@ uint16_t bt_mesh_health_server_model_act_handle(rtk_bt_cmd_t *p_cmd)
 		ret = RTK_BT_OK;
 		break;
 	}
-	default:
-		printf("[%s] Unknown p_cmd->act:%d\r\n", __func__, p_cmd->act);
+	case RTK_BT_MESH_HEALTH_SERVER_MODEL_ACT_TEST_SET: {
+		rtk_bt_mesh_health_server_test_set_t *test_set = (rtk_bt_mesh_health_server_test_set_t *)p_cmd->param;
+		health_server_set_tests(&health_server_model, test_set->test, test_set->num_tests);
+		ret = RTK_BT_OK;
 		break;
 	}
-	ret = ret | RTK_BT_STACK_MESH_ERROR_FLAG;
+	case RTK_BT_MESH_HEALTH_SERVER_MODEL_ACT_COMPANY_ID_SET: {
+		rtk_bt_mesh_health_server_company_id_set_t *company_id_set = (rtk_bt_mesh_health_server_company_id_set_t *)p_cmd->param;
+		health_server_set_company_id(&health_server_model, company_id_set->company_id);
+		ret = RTK_BT_OK;
+		break;
+	}
+	default:
+		BT_LOGE("[%s] Unknown p_cmd->act:%d\r\n", __func__, p_cmd->act);
+		break;
+	}
 end:
 	p_cmd->ret = ret;
 	osif_sem_give(p_cmd->psem);

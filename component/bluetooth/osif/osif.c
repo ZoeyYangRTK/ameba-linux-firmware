@@ -6,6 +6,7 @@
 #include <basic_types.h>
 #include <os_wrapper.h>
 #include <osif.h>
+#include <bt_debug.h>
 
 /****************************************************************************/
 /* Check if in task context (true), or isr context (false)                  */
@@ -118,7 +119,7 @@ bool osif_task_yield(void)
 bool osif_task_handle_get(void **pp_handle)
 {
 	if (pp_handle == NULL) {
-		printf("%s: pp_handle is null\r\n", __func__);
+		BT_LOGE("%s: pp_handle is null\r\n", __func__);
 		return false;
 	}
 
@@ -133,7 +134,7 @@ bool osif_task_handle_get(void **pp_handle)
 bool osif_task_priority_get(void *p_handle, uint16_t *p_priority)
 {
 	if (p_priority == NULL) {
-		printf("%s: p_priority is null\r\n", __func__);
+		BT_LOGE("%s: p_priority is null\r\n", __func__);
 		return false;
 	}
 
@@ -165,7 +166,7 @@ bool osif_signal_init(void)
 void osif_signal_deinit(void)
 {
 	if (sig_handle == NULL) {
-		printf("%s: sig_handle is null\r\n", __func__);
+		BT_LOGE("%s: sig_handle is null\r\n", __func__);
 		return;
 	}
 
@@ -182,7 +183,7 @@ bool osif_task_signal_send(void *p_handle, uint32_t signal)
 	(void)signal;
 
 	if (sig_handle == NULL) {
-		printf("%s: sig_handle is null\r\n", __func__);
+		BT_LOGE("%s: sig_handle is null\r\n", __func__);
 		return false;
 	}
 
@@ -197,7 +198,7 @@ bool osif_task_signal_recv(uint32_t *p_handle, uint32_t wait_ms)
 	(void)p_handle;
 
 	if (sig_handle == NULL) {
-		printf("%s: sig_handle is null\r\n", __func__);
+		BT_LOGE("%s: sig_handle is null\r\n", __func__);
 		return false;
 	}
 
@@ -307,6 +308,38 @@ bool osif_mutex_give(void *p_handle)
 }
 
 /****************************************************************************/
+/* Create recursive mutex                                                    */
+/****************************************************************************/
+bool osif_recursive_mutex_create(void **pp_handle)
+{
+	return (rtos_mutex_recursive_create((rtos_mutex_t *)pp_handle) == SUCCESS);
+}
+
+/****************************************************************************/
+/* Delete recursive mutex                                                             */
+/****************************************************************************/
+bool osif_recursive_mutex_delete(void *p_handle)
+{
+	return (rtos_mutex_recursive_delete((rtos_mutex_t)p_handle) == SUCCESS);
+}
+
+/****************************************************************************/
+/* Take recursive mutex                                                               */
+/****************************************************************************/
+bool osif_recursive_mutex_take(void *p_handle, uint32_t wait_ms)
+{
+	return (rtos_mutex_recursive_take((rtos_mutex_t)p_handle, wait_ms) == SUCCESS);
+}
+
+/****************************************************************************/
+/* Give recursive mutex                                                               */
+/****************************************************************************/
+bool osif_recursive_mutex_give(void *p_handle)
+{
+	return (rtos_mutex_recursive_give((rtos_mutex_t)p_handle) == SUCCESS);
+}
+
+/****************************************************************************/
 /* Create inter-thread message queue                                        */
 /****************************************************************************/
 bool osif_msg_queue_create(void **pp_handle, uint32_t msg_num, uint32_t msg_size)
@@ -328,7 +361,7 @@ bool osif_msg_queue_delete(void *p_handle)
 bool osif_msg_queue_peek(void *p_handle, uint32_t *p_msg_num)
 {
 	if (p_msg_num == NULL) {
-		printf("%s: p_msg_num is null\r\n", __func__);
+		BT_LOGE("%s: p_msg_num is null\r\n", __func__);
 		return false;
 	}
 
@@ -436,7 +469,7 @@ size_t osif_mem_peek(RAM_TYPE ram_type)
 bool osif_timer_id_get(void **pp_handle, uint32_t *p_timer_id)
 {
 	if (pp_handle == NULL || p_timer_id == NULL) {
-		printf("%s: pp_handle or p_timer_id is null\r\n", __func__);
+		BT_LOGE("%s: pp_handle or p_timer_id is null\r\n", __func__);
 		return false;
 	}
 
@@ -460,7 +493,7 @@ bool osif_timer_create(void **pp_handle, const char *p_timer_name, uint32_t time
 bool osif_timer_start(void **pp_handle)
 {
 	if (pp_handle == NULL) {
-		printf("%s: pp_handle is null\r\n", __func__);
+		BT_LOGE("%s: pp_handle is null\r\n", __func__);
 		return false;
 	}
 
@@ -473,7 +506,7 @@ bool osif_timer_start(void **pp_handle)
 bool osif_timer_restart(void **pp_handle, uint32_t interval_ms)
 {
 	if (pp_handle == NULL) {
-		printf("%s: pp_handle is null\r\n", __func__);
+		BT_LOGE("%s: pp_handle is null\r\n", __func__);
 		return false;
 	}
 
@@ -486,7 +519,7 @@ bool osif_timer_restart(void **pp_handle, uint32_t interval_ms)
 bool osif_timer_stop(void **pp_handle)
 {
 	if (pp_handle == NULL) {
-		printf("%s: pp_handle is null\r\n", __func__);
+		BT_LOGE("%s: pp_handle is null\r\n", __func__);
 		return false;
 	}
 
@@ -499,7 +532,7 @@ bool osif_timer_stop(void **pp_handle)
 bool osif_timer_delete(void **pp_handle)
 {
 	if (pp_handle == NULL) {
-		printf("%s: pp_handle is null\r\n", __func__);
+		BT_LOGE("%s: pp_handle is null\r\n", __func__);
 		return false;
 	}
 
@@ -517,7 +550,7 @@ bool osif_timer_delete(void **pp_handle)
 bool osif_timer_state_get(void **pp_handle, uint32_t *p_timer_state)
 {
 	if (pp_handle == NULL || p_timer_state == NULL) {
-		printf("%s: pp_handle or p_timer_state is null\r\n", __func__);
+		BT_LOGE("%s: pp_handle or p_timer_state is null\r\n", __func__);
 		return false;
 	}
 

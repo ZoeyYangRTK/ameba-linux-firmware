@@ -33,13 +33,13 @@ Setup Guide
 	To run vendor-specific USB host application on AP:
 	1. Type command "make menuconfig" under auto_build and choose MENUCONFIG FOR AP CONFIG => CONFIG USB:
 		[*] Enable USB
-		(HOST_MODE) USB Mode
+		(Host) USB Mode
 		[*] Vendor
 	Save and exit.
 	2. Type command "make all EXAMPLE=usbh_vendor" under auto_build to build the images.
 	3. Download the generated images under auto_build to Ameba board.
 	4. Reset the board, following log shall be printed on the LOGUART console, make sure there is no USB related error reported:
-		[VENDOR] USB host vendor demo started...
+		[VND] USBH vendor demo start
 	5. Connect the vendor-specific USB device (e.g. another Ameba board running usbd_vendor_new application) to the USB port of
 	the board with USB cable.
 	6. Reset and check the test log via LOGUART console, make sure there is no error reported and the transfer success rate is
@@ -57,7 +57,7 @@ Setup Guide
 	To run vendor-specific USB host application on HP:
 	1. Type command "make menuconfig" under auto_build and choose MENUCONFIG FOR HP CONFIG => CONFIG USB:
 		[*] Enable USB
-		(HOST_MODE) USB Mode
+		(Host) USB Mode
 		[*] Vendor
 	Save and exit.
 	2. Type command "make all" under auto_build and type "make EXAMPLE=usbh_vendor" under project_hp to build the images.

@@ -26,6 +26,12 @@ KM0_BUILDDIR	= $(ROOTDIR)/../../project_lp
 KM4_BUILDDIR	= $(ROOTDIR)/../../project_hp
 AP_BUILDDIR	= $(ROOTDIR)/../../project_ap
 
+ifeq ($(CONFIG_SINGLE_CORE_WIFI), y)
+AP_IMAGEDIR		= $(KM4_BUILDDIR)/asdk/image
+else
+AP_IMAGEDIR		= $(AP_BUILDDIR)/asdk/image
+endif
+
 TARGETDIR	=$(BASEDIR)/component/soc/amebasmart
 BOOTLOADER	=$(BASEDIR)/component/soc/amebasmart/bootloader
 UTILITYDIR	= $(ROOTDIR)/gnu_utility
@@ -34,6 +40,7 @@ GNU_SCRIPT	= $(UTILITYDIR)/gnu_script
 FLASHDLIMGDIR	= $(GNU_SCRIPT)/acut_loader
 FLASHDLIMGDIR_KM0	= $(KM0_BUILDDIR)/asdk/gnu_utility/gnu_script/acut_loader
 
+WIFIMAKEDIR	= $(BASEDIR)/component/wifi/wifi_make
 
 OSDIR		= $(BASEDIR)/component/os
 FREERTOSDIR	= $(BASEDIR)/component/os/freertos/freertos_v10.5.1/Source
@@ -44,6 +51,7 @@ PHERIEXAMPLE	= $(ROOTDIR)/../example/demo_peripheral
 # -----------------------------------------------------------------------------
 PREPENDTOOL		= $(UTILITYDIR)/prepend_header.sh
 OTAPREPENDTOOL  = $(UTILITYDIR)/prepend_ota_header.sh
+COMPRESSTOOL  = python $(UTILITYDIR)/compresstool.py
 LXDIALOG_CYGWIN_STATIC 	= $(UTILITYDIR)/lxdialog_prebuilt/lxdialog_cygwin_x86_static.exe
 COMPILEOS		= $(shell uname -o)
 COMPILEOS_CYGWIN	= $(shell uname -o | cut -c 1-6)
@@ -83,10 +91,12 @@ ifeq ($(COMPILEOS),$(LINUX_OS))
 ASDK_TOOLCHAIN = $(TOOLCHAINDIR)/asdk-$(ASDK_VER)/linux/newlib
 TOOLCHAINNAME = asdk-10.3.1-linux-newlib-build-4072-x86_64.tar.bz2
 TOOLCHAINURL	= https://github.com/Ameba-AIoT/ameba-toolchain/releases/download/10.3.1/asdk-10.3.1-linux-newlib-build-4072-x86_64.tar.bz2
+TOOLCHAINURL_ALIYUN	= https://rs-wn.oss-cn-shanghai.aliyuncs.com/asdk-10.3.1-linux-newlib-build-4072-x86_64.tar.bz2
 else
 ASDK_TOOLCHAIN = $(TOOLCHAINDIR)/asdk-$(ASDK_VER)/mingw32/newlib
 TOOLCHAINNAME = asdk-10.3.1-mingw32-newlib-build-4072-x86_64.zip
 TOOLCHAINURL	= https://github.com/Ameba-AIoT/ameba-toolchain/releases/download/10.3.1/asdk-10.3.1-mingw32-newlib-build-4072-x86_64.zip
+TOOLCHAINURL_ALIYUN = https://rs-wn.oss-cn-shanghai.aliyuncs.com/asdk-10.3.1-mingw32-newlib-build-4072-x86_64.zip
 endif
 
 tool_dir = $(ASDK_TOOLCHAIN)/bin
@@ -149,30 +159,18 @@ IFLAGS               += -I$(TARGETDIR)/misc
 IFLAGS               += -I$(TARGETDIR)/hal/include
 IFLAGS               += -I$(TARGETDIR)/hal/src
 IFLAGS               += -I$(TARGETDIR)/usrcfg/include
+IFLAGS               += -I$(BASEDIR)/component/soc/common
 
 IFLAGS               += -I$(INCDIR)
 IFLAGS               += -I$(BASEDIR)/component/stdlib
-IFLAGS               += -I$(BASEDIR)/component/wifi/api
-IFLAGS               += -I$(BASEDIR)/component/wifi/simple_config
-IFLAGS               += -I$(BASEDIR)/component/wifi/wifi_fast_connect
+
 IFLAGS               += -I$(BASEDIR)/component/example
 IFLAGS               += -I$(BASEDIR)/component/usb/host/cdc_ecm/
 
-#WIFI
-IFLAGS               += -I$(BASEDIR)/component/wifi/common
-IFLAGS               += -I$(BASEDIR)/component/wifi/driver/core
-IFLAGS               += -I$(BASEDIR)/component/wifi/driver/core_rom
-IFLAGS               += -I$(BASEDIR)/component/wifi/driver/halcommon_rom
-IFLAGS               += -I$(BASEDIR)/component/wifi/driver/include
-IFLAGS               += -I$(BASEDIR)/component/wifi/wifi_reg/rtl8730e
-IFLAGS               += -I$(BASEDIR)/component/wifi/wifi_reg/common
+include $(WIFIMAKEDIR)/Makefile.include.gen.wifi
+
 IFLAGS               += -I$(BASEDIR)/component/wifi/wifi_fw/common
-IFLAGS               += -I$(BASEDIR)/component/wifi/wifi_cast
-IFLAGS               += -I$(BASEDIR)/component/wifi/driver/intf
-IFLAGS               += -I$(BASEDIR)/component/wifi/driver/intf/g6_intf/rtl8730e
-IFLAGS               += -I$(BASEDIR)/component/wifi/common/secure
-IFLAGS               += -I$(BASEDIR)/component/wifi/wpa_supplicant/wpa_lite
-IFLAGS               += -I$(BASEDIR)/component/wifi/wpa_supplicant/wpa_lite/rom
+
 IFLAGS               += -I$(BASEDIR)/component/network
 IFLAGS               += -I$(BASEDIR)/component/lwip/lwip_v2.1.2/src/include
 #IFLAGS               += -I$(BASEDIR)/component/lwip/lwip_v2.1.2/src/include/lwip
@@ -182,16 +180,12 @@ IFLAGS               += -I$(BASEDIR)/component/lwip/lwip_v2.1.2/src/include/neti
 IFLAGS               += -I$(BASEDIR)/component/lwip/lwip_v2.1.2/port/realtek
 IFLAGS               += -I$(BASEDIR)/component/lwip/lwip_v2.1.2/port/realtek/freertos
 IFLAGS               += -I$(BASEDIR)/component/lwip/api
-IFLAGS               += -I$(BASEDIR)/component/wifi/wpa_supplicant/src
-IFLAGS               += -I$(BASEDIR)/component/wifi/wpa_supplicant/src/crypto
+
 IFLAGS               += -I$(BASEDIR)/component/os_dep
-IFLAGS               += -I$(BASEDIR)/component/wifi/driver/nan
-IFLAGS               += -I$(BASEDIR)/component/wifi/driver/p2p
+
+
 #IFLAGS               += -I$(BASEDIR)/component/network/http2/nghttp2-1.31.0/includes
 
-#INIC
-IFLAGS               += -I$(BASEDIR)/component/wifi/inic
-IFLAGS               += -I$(BASEDIR)/component/wifi/inic/ipc
 
 #RTSP
 IFLAGS               += -I$(BASEDIR)/component/network/rtsp
@@ -451,7 +445,7 @@ ROM_LD_ARG += -Wl,--no-enum-size-warning
 #*****************************************************************************#
 #                      RULES TO CHECK TOOLCHAIN                               #
 #*****************************************************************************#
-check_toolchain:
+define download_toolchain_func
 	@if [ -d $(ASDK_TOOLCHAIN) ]; then \
 		echo "ToolChain Had Existed"; \
 	else \
@@ -463,7 +457,7 @@ check_toolchain:
 			echo "Create Toolchain Dir Failed. May Not Have Permission. Please Refer To README.MD Or AN900 Chapter 1.3(Installing Toolchain)."; \
 			exit 1; \
 		fi; \
-		if wget -P $(TOOLCHAINDIR) $(TOOLCHAINURL); then \
+		if wget -P $(TOOLCHAINDIR) $(1); then \
 			echo "Download $(TOOLCHAINNAME) Success"; \
 		else \
 			echo "Download Failed. Please Check If The Network Connection Is Accessible Or Refer To AN900 Chapter 1.3(Installing Toolchain)."; \
@@ -477,6 +471,9 @@ check_toolchain:
 		fi; \
 		echo "INSTALL SUCCESS"; \
 	fi
+endef
+check_toolchain:
+	$(call download_toolchain_func,$(TOOLCHAINURL))
 	# check permission
 	@if [ ! -x $(UTILITYDIR)/checksum ]; then \
 		chmod 777 $(UTILITYDIR)/checksum; \

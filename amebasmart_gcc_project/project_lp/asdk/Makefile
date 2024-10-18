@@ -49,9 +49,9 @@ endif
 LINK_ROM_LIB = $(ROM_LIB_DIR)/rom.a
 
 LINK_ROM_SYMBOL = ./ld/rlx8721d_rom_symbol_empty.ld
-ifeq ($(CONFIG_LINK_ROM_SYMB),y) 
+ifeq ($(CONFIG_LINK_ROM_SYMB),y)
 LINK_ROM_LIB =
-LINK_ROM_SYMBOL = ./ld/rlx8721d_rom_symbol_acut.ld 
+LINK_ROM_SYMBOL = ./ld/rlx8721d_rom_symbol_acut.ld
 endif
 
 LINK_THIRD_APP_LIB =
@@ -63,15 +63,17 @@ STATIC_ANALYZE_PYTHON=python $(SCRIPT_DIR)/static_code_analyze.py
 
 .PHONY: all build_target_folder menuconfig clean build_libraries
 
+prebuild: build_target_folder check_toolchain build_info.h
+
 ifeq ($(CONFIG_WIFI_FW_EN),y)
 image2:LINK_APP_LIB += $(ROOTDIR)/lib/application/lib_wifi_fw.a
 endif
 
 image2:LINK_APP_LIB += $(ROOTDIR)/lib/soc/lib_pmc.a $(ROOTDIR)/lib/soc/lib_chipinfo.a $(ROOTDIR)/lib/soc/lib_crashdump.a
 
-all: build_target_folder copy_ld_ram check_toolchain build_info.h make_subdirs linker_image2
-image2: build_target_folder copy_ld_img2 check_toolchain build_info.h make_subdirs linker_image2
-lib_image2: build_target_folder copy_ld_img2 check_toolchain build_info.h make_subdirs_lib
+all: prebuild copy_ld_ram make_subdirs linker_image2
+image2: prebuild copy_ld_img2 make_subdirs linker_image2
+lib_image2: prebuild copy_ld_img2 make_subdirs_lib
 #*****************************************************************************#
 #                      RULES TO CREATE DIRECTORY                              #
 #*****************************************************************************#
@@ -142,6 +144,10 @@ linker_image2:
 	@echo "========== linker img2 end =========="
 
 	@echo "========== Image manipulating start =========="
+	$(Q) sh $(UTILITYDIR)/pad.sh $(IMAGE_TARGET_FOLDER)/sram_2.bin 32
+	$(Q) sh $(UTILITYDIR)/pad.sh $(IMAGE_TARGET_FOLDER)/psram_image2.bin 32
+	$(Q) sh $(UTILITYDIR)/pad.sh $(IMAGE_TARGET_FOLDER)/xip_image2.bin 32
+
 	@#$(Q)$(PREPENDTOOL) $(IMAGE_TARGET_FOLDER)/ram_retention.bin  __retention_entry_func__  $(IMAGE_TARGET_FOLDER)/target_img2.map
 	$(Q)$(PREPENDTOOL) $(IMAGE_TARGET_FOLDER)/sram_2.bin  __sram_image2_start__  $(IMAGE_TARGET_FOLDER)/target_img2.map
 	$(Q)$(PREPENDTOOL) $(IMAGE_TARGET_FOLDER)/psram_image2.bin  __psram_image2_start__  $(IMAGE_TARGET_FOLDER)/target_img2.map
@@ -149,35 +155,74 @@ linker_image2:
 
 	@# pad to 4K-aligned for RSIP/MMU address 4K-alignment restriction
 	$(Q)cat $(IMAGE_TARGET_FOLDER)/xip_image2_prepend.bin $(IMAGE_TARGET_FOLDER)/sram_2_prepend.bin $(IMAGE_TARGET_FOLDER)/psram_image2_prepend.bin > $(IMAGE_TARGET_FOLDER)/km0_image2_all.bin
-	$(Q)$(UTILITYDIR)/pad.sh $(IMAGE_TARGET_FOLDER)/km0_image2_all.bin
-	
+	$(Q)$(UTILITYDIR)/pad.sh $(IMAGE_TARGET_FOLDER)/km0_image2_all.bin 4096
+
 	@if [ -f $(SCRIPT_DIR)/static_code_analyze.py ]; then \
 		$(STATIC_ANALYZE_PYTHON); \
 	fi
 
 	$(Q)$(KM4_BUILDDIR)/asdk/gnu_utility/image_tool/imagetool.sh $(IMAGE_TARGET_FOLDER)/km0_image2_all.bin $(BUILD_TYPE)
 
-ifeq ($(CONFIG_UPGRADE_BOOTLOADER), y)
-	@if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin ]; then \
-		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin $(KM4_BUILDDIR)/asdk/image/km4_boot_all.bin; \
-		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin $(KM4_BUILDDIR)/asdk/image/km4_boot_all_ns.bin; \
+ifeq ($(CONFIG_FATFS_WITHIN_APP_IMG), y)
+	@if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin ] && [ -f $(BASEDIR)/amebasmart_gcc_project/fatfs.bin ]; then \
+		mv $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_tmp.bin; \
+		mv $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns_tmp.bin; \
+		sh $(UTILITYDIR)/pad.sh $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_tmp.bin 4096; \
+		sh $(UTILITYDIR)/pad.sh $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns_tmp.bin 4096; \
+		$(PREPENDTOOL) $(BASEDIR)/amebasmart_gcc_project/fatfs.bin  VFS1_FLASH_BASE_ADDR  $(IMAGE_TARGET_FOLDER)/target_img2.map; \
+		cat $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_tmp.bin $(BASEDIR)/amebasmart_gcc_project/fatfs_prepend.bin > $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin; \
+		cat $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns_tmp.bin $(BASEDIR)/amebasmart_gcc_project/fatfs_prepend.bin > $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin; \
 	else \
-		if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_app.bin ]; then \
-			$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_app.bin $(KM4_BUILDDIR)/asdk/image/km4_boot_all.bin; \
-			$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_app_ns.bin $(KM4_BUILDDIR)/asdk/image/km4_boot_all_ns.bin; \
-		fi \
-	fi
-else
-	@if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin ]; then \
-		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin; \
-		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin; \
-	else \
-		if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_app.bin ]; then \
-			$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_app.bin; \
-			$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_app_ns.bin; \
+		if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_app.bin ] && [ -f $(BASEDIR)/amebasmart_gcc_project/fatfs.bin ]; then \
+			mv $(KM4_BUILDDIR)/asdk/image/km0_km4_app.bin $(KM4_BUILDDIR)/asdk/image/km0_km4_app_tmp.bin; \
+			mv $(KM4_BUILDDIR)/asdk/image/km0_km4_app_ns.bin $(KM4_BUILDDIR)/asdk/image/km0_km4_app_ns_tmp.bin; \
+			sh $(UTILITYDIR)/pad.sh $(KM4_BUILDDIR)/asdk/image/km0_km4_app_tmp.bin 4096; \
+			sh $(UTILITYDIR)/pad.sh $(KM4_BUILDDIR)/asdk/image/km0_km4_app_ns_tmp.bin 4096; \
+			$(PREPENDTOOL) $(BASEDIR)/amebasmart_gcc_project/fatfs.bin  VFS1_FLASH_BASE_ADDR  $(IMAGE_TARGET_FOLDER)/target_img2.map; \
+			cat $(KM4_BUILDDIR)/asdk/image/km0_km4_app_tmp.bin $(BASEDIR)/amebasmart_gcc_project/fatfs_prepend.bin > $(KM4_BUILDDIR)/asdk/image/km0_km4_app.bin; \
+			cat $(KM4_BUILDDIR)/asdk/image/km0_km4_app_ns_tmp.bin $(BASEDIR)/amebasmart_gcc_project/fatfs_prepend.bin > $(KM4_BUILDDIR)/asdk/image/km0_km4_app_ns.bin; \
 		fi \
 	fi
 endif
+
+ifeq ($(CONFIG_COMPRESS_OTA_IMG), y)
+	@if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_app.bin ]; then \
+		$(COMPRESSTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_app.bin; \
+		$(COMPRESSTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_app_ns.bin; \
+		$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_app_compress.bin $(KM4_BUILDDIR)/asdk/image/tmp_app.bin; \
+		$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_app_ns_compress.bin $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin; \
+	else \
+		if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin ]; then \
+			$(COMPRESSTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin; \
+			$(COMPRESSTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin; \
+			$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_compress.bin $(KM4_BUILDDIR)/asdk/image/tmp_app.bin; \
+			$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns_compress.bin $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin; \
+		fi \
+	fi
+else
+	@if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_app.bin ]; then \
+		$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_app.bin $(KM4_BUILDDIR)/asdk/image/tmp_app.bin; \
+		$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_app_ns.bin $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin; \
+	else \
+		if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin ]; then \
+			$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin $(KM4_BUILDDIR)/asdk/image/tmp_app.bin; \
+			$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin; \
+		fi \
+	fi
+endif
+ifeq ($(CONFIG_UPGRADE_BOOTLOADER), y)
+	@if [ -f $(KM4_BUILDDIR)/asdk/image/tmp_app.bin ]; then \
+		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/tmp_app.bin $(KM4_BUILDDIR)/asdk/image/km4_boot_all.bin; \
+		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin $(KM4_BUILDDIR)/asdk/image/km4_boot_all_ns.bin; \
+	fi
+else
+	@if [ -f $(KM4_BUILDDIR)/asdk/image/tmp_app.bin ]; then \
+		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/tmp_app.bin; \
+		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin; \
+	fi
+endif
+	@rm -f $(KM4_BUILDDIR)/asdk/image/tmp_app.bin
+	@rm -f $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin
 	@echo "========== Image manipulating end =========="
 
 

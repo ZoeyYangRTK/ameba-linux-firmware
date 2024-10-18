@@ -22,6 +22,7 @@ void bt_stack_pending_cmd_deinit(void);
 rtk_bt_cmd_t *bt_stack_pending_cmd_search(uint32_t msg_type);
 void bt_stack_pending_cmd_insert(rtk_bt_cmd_t *p_cmd);
 void bt_stack_pending_cmd_delete(rtk_bt_cmd_t *p_cmd);
+bool bt_stack_profile_check(rtk_bt_profile_t profile);
 
 uint16_t bt_stack_le_gap_wait_ready(void);
 void bt_stack_le_gap_handle_io_msg(uint16_t gap_type, void *gap_msg);
@@ -45,7 +46,6 @@ void bt_stack_vendor_callback(uint8_t cb_type, void *p_cb_data);
 
 #if defined(RTK_BLE_ISO_SUPPORT) && RTK_BLE_ISO_SUPPORT
 uint16_t bt_stack_le_iso_act_handle(rtk_bt_cmd_t *p_cmd);
-void bt_stack_le_iso_handle_io_msg(T_IO_MSG *p_io_msg);
 #endif
 #if defined(RTK_BREDR_SUPPORT) && RTK_BREDR_SUPPORT
 uint16_t bt_stack_br_gap_wait_ready(void);
@@ -65,10 +65,13 @@ uint16_t bt_stack_sdp_init(void);
 void bt_stack_sdp_deinit(void);
 uint16_t bt_stack_hfp_init(uint8_t role);
 void bt_stack_hfp_deinit(void);
+uint16_t bt_stack_pbap_init(uint8_t role);
+void bt_stack_pbap_deinit(void);
 
 uint16_t bt_stack_br_gap_act_handle(rtk_bt_cmd_t *p_cmd);
 uint16_t bt_stack_a2dp_act_handle(rtk_bt_cmd_t *p_cmd);
 uint16_t bt_stack_hfp_act_handle(rtk_bt_cmd_t *p_cmd);
+uint16_t bt_stack_pbap_act_handle(rtk_bt_cmd_t *p_cmd);
 uint16_t bt_stack_avrcp_act_handle(rtk_bt_cmd_t *p_cmd);
 uint16_t bt_stack_sdp_act_handle(rtk_bt_cmd_t *p_cmd);
 uint16_t bt_stack_spp_act_handle(rtk_bt_cmd_t *p_cmd);
@@ -161,6 +164,17 @@ static inline void bt_stack_hfp_deinit(void)
 
 }
 
+static inline uint16_t bt_stack_pbap_init(uint8_t role)
+{
+	(void)role;
+	return RTK_BT_OK;
+}
+
+static inline void bt_stack_pbap_deinit(void)
+{
+
+}
+
 static inline uint16_t bt_stack_br_gap_act_handle(rtk_bt_cmd_t *p_cmd)
 {
 	(void)p_cmd;
@@ -174,6 +188,12 @@ static inline uint16_t bt_stack_a2dp_act_handle(rtk_bt_cmd_t *p_cmd)
 }
 
 static inline uint16_t bt_stack_hfp_act_handle(rtk_bt_cmd_t *p_cmd)
+{
+	(void)p_cmd;
+	return RTK_BT_OK;
+}
+
+static inline uint16_t bt_stack_pbap_act_handle(rtk_bt_cmd_t *p_cmd)
 {
 	(void)p_cmd;
 	return RTK_BT_OK;
@@ -206,16 +226,11 @@ static inline uint16_t bt_stack_sdp_act_handle(rtk_bt_cmd_t *p_cmd)
 
 #if defined(RTK_BLE_ISO_SUPPORT) && RTK_BLE_ISO_SUPPORT
 uint16_t bt_stack_le_iso_act_handle(rtk_bt_cmd_t *p_cmd);
-void bt_stack_le_iso_handle_io_msg(T_IO_MSG *p_io_msg);
 #else
 static inline uint16_t bt_stack_le_iso_act_handle(rtk_bt_cmd_t *p_cmd)
 {
 	(void)p_cmd;
 	return RTK_BT_OK;
-}
-static inline void bt_stack_le_iso_handle_io_msg(T_IO_MSG *p_io_msg)
-{
-	(void)p_io_msg;
 }
 #endif
 #if defined(RTK_BLE_AUDIO_SUPPORT) && RTK_BLE_AUDIO_SUPPORT

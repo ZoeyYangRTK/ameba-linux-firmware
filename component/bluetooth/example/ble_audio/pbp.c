@@ -84,7 +84,7 @@ app_bt_le_audio_broadcast_sink_info_t g_pbp_bsink_info = {
 	.p_bap_bro_sink_info = &app_bap_bro_sink_info,
 	.status = 0
 };
-
+static rtk_bt_le_audio_bis_info_t sync_bis_info = {0};
 static uint8_t app_pbp_bsink_pac_sink_codec[] = {
 	//Number_of_PAC_records
 	2,
@@ -277,7 +277,7 @@ static uint16_t app_bt_le_audio_pbp_bsrc_setup_data_path(app_bt_le_audio_bap_bro
 		bis_idx = p_bsrc_info->bis_info.bis_conn_info[i].bis_idx;
 		ret = rtk_bt_le_audio_broadcast_source_setup_data_path(p_bsrc_info->broadcast_source_handle, bis_idx, &setup_path_param,
 															   &p_bsrc_info->bis_info.bis_conn_info[i].bis_conn_handle);
-		BT_LOGA("[APP] broadcast source setup data path %s for broadcast_source_handle 0x%p bis_index %d,bis_conn_handle 0x%x, ret: 0x%x\r\n",
+		BT_LOGA("[APP] broadcast source setup data path %s for broadcast_source_handle 0x%08x bis_index %d,bis_conn_handle 0x%x, ret: 0x%x\r\n",
 				((RTK_BT_OK != ret) ? "fail" : "ok"),
 				p_bsrc_info->broadcast_source_handle,
 				bis_idx,
@@ -440,11 +440,11 @@ static uint16_t app_bt_le_audio_encode_data_send(app_lea_iso_data_path_t *p_iso_
 	if (ret == RTK_BT_OK) {
 		BT_LOGD("[APP] %s ok, iso_conn_handle 0x%x, seq_num %d, available heap %d sys_time %d\r\n", __func__, p_iso_path->iso_conn_handle,
 				p_iso_path->pkt_seq_num, osif_mem_peek(RAM_TYPE_DATA_ON), (int)osif_sys_time_get());
-		BT_DUMPD(__func__, p_data, data_len);
+		BT_DUMPD("", p_data, data_len);
 		p_iso_path->status_ok_cnt++;
 	} else {
 		BT_LOGE("[APP] %s failed, iso_conn_handle 0x%x, seq_num %d, ret 0x%x\r\n", __func__, p_iso_path->iso_conn_handle, p_iso_path->pkt_seq_num, ret);
-		BT_DUMPD(__func__, p_data, data_len);
+		BT_DUMPD("", p_data, data_len);
 		p_iso_path->status_fail_cnt++;
 	}
 	app_bt_le_audio_iso_data_tx_statistics(p_iso_path);
@@ -619,7 +619,7 @@ static void app_bt_le_audio_pbp_encode_task_entry(void *ctx)
 			}
 			//skip removing iso path
 			if (p_iso_path->is_removing) {
-				BT_LOGD("[APP] %s p_iso_path(%p) is removing\r\n", __func__, p_iso_path);
+				BT_LOGD("[APP] %s p_iso_path(%08x) is removing\r\n", __func__, p_iso_path);
 				continue;
 			}
 			//wait if encode task is fast and send task is slow
@@ -629,7 +629,7 @@ static void app_bt_le_audio_pbp_encode_task_entry(void *ctx)
 			}
 #if defined(RTK_BLE_AUDIO_BIRDS_SING_PCM_SUPPORT) && RTK_BLE_AUDIO_BIRDS_SING_PCM_SUPPORT
 			if (RTK_BT_OK != app_bt_le_audio_encode_birds_sing(p_iso_path, p_pcm_data, pcm_total_num)) {
-				printf("[APP] %s app_bt_le_audio_encode_birds_sing fail\r\n", __func__);
+				BT_LOGE("[APP] %s app_bt_le_audio_encode_birds_sing fail\r\n", __func__);
 				continue;
 			}
 #endif
@@ -764,7 +764,7 @@ static uint16_t app_bt_le_audio_pbp_bsink_setup_data_path(rtk_bt_le_audio_sync_h
 
 	p_sync_dev_info = app_bt_le_audio_sync_dev_list_find(sync_handle);
 	if (!p_sync_dev_info) {
-		BT_LOGE("[APP] %s not find sync dev info for sync_handle %p\r\n", __func__, sync_handle);
+		BT_LOGE("[APP] %s not find sync dev info for sync_handle %08x\r\n", __func__, sync_handle);
 		return RTK_BT_FAIL;
 	}
 
@@ -772,6 +772,7 @@ static uint16_t app_bt_le_audio_pbp_bsink_setup_data_path(rtk_bt_le_audio_sync_h
 	if (ret != RTK_BT_OK) {
 		BT_LOGE("[APP] rtk_bt_le_audio_sync_get_bis_info fail,ret = 0x%x\r\n", ret);
 	}
+	sync_bis_info = bis_info;
 	//set up iso data path
 	for (i = 0; i < bis_info.num_bis; i++) {
 		bis_idx = bis_info.bis_conn_info[i].bis_idx;
@@ -781,7 +782,7 @@ static uint16_t app_bt_le_audio_pbp_bsink_setup_data_path(rtk_bt_le_audio_sync_h
 			BT_LOGE("[APP] rtk_bt_le_audio_sync_get_bis_sync_codec_cfg fail,ret = 0x%x\r\n", ret);
 			continue;
 		} else {
-			BT_LOGD("[APP] rtk_bt_le_audio_sync_get_bis_sync_codec_cfg ok (sync_handle %p, bis_idx %d,", sync_handle, bis_idx);
+			BT_LOGD("[APP] rtk_bt_le_audio_sync_get_bis_sync_codec_cfg ok (sync_handle %08x, bis_idx %d,", sync_handle, bis_idx);
 			BT_LOGA("[APP] type_exist 0x%x, frame_duration 0x%x, sample_frequency 0x%x, codec_frame_blocks_per_sdu 0x%x, octets_per_codec_frame 0x%x, audio_channel_allocation 0x%x)\r\n",
 					bis_codec_cfg.type_exist, bis_codec_cfg.frame_duration,
 					bis_codec_cfg.sample_frequency, bis_codec_cfg.codec_frame_blocks_per_sdu,
@@ -792,7 +793,7 @@ static uint16_t app_bt_le_audio_pbp_bsink_setup_data_path(rtk_bt_le_audio_sync_h
 	for (i = 0; i < bis_info.num_bis; i++) {
 		bis_idx = bis_info.bis_conn_info[i].bis_idx;
 		ret = rtk_bt_le_audio_sync_setup_data_path(sync_handle, bis_idx, &param);
-		BT_LOGA("[APP] broadcast sink setup data path %s for sync_handle 0x%p bis_index %d, ret: 0x%x\r\n",
+		BT_LOGA("[APP] broadcast sink setup data path %s for sync_handle 0x%08x bis_index %d, ret: 0x%x\r\n",
 				((RTK_BT_OK != ret) ? "fail" : "ok"), sync_handle, bis_idx, ret);
 		if (ret != RTK_BT_OK) {
 			BT_LOGE("[APP] rtk_bt_le_audio_sync_setup_data_path fail,bis_idx: 0x%x\r\n", bis_idx);
@@ -800,6 +801,28 @@ static uint16_t app_bt_le_audio_pbp_bsink_setup_data_path(rtk_bt_le_audio_sync_h
 		}
 	}
 
+	return ret;
+}
+
+static uint16_t app_bt_le_audio_pbp_bsink_remove_data_path(rtk_bt_le_audio_sync_handle_t sync_handle)
+{
+	uint8_t i = 0;
+	uint16_t ret = 0;
+	uint16_t bis_conn_handle = 0;
+	app_bt_le_audio_sync_dev_info_t *p_sync_dev_info = NULL;
+	if (!sync_handle) {
+		return RTK_BT_ERR_PARAM_INVALID;
+	}
+	p_sync_dev_info = app_bt_le_audio_sync_dev_list_find(sync_handle);
+	if (!p_sync_dev_info) {
+		BT_LOGE("[APP] %s not find sync dev info for sync_handle %08x\r\n", __func__, sync_handle);
+		return RTK_BT_FAIL;
+	}
+	//remove iso data path
+	for (i = 0; i < sync_bis_info.num_bis; i++) {
+		bis_conn_handle = sync_bis_info.bis_conn_info[i].bis_conn_handle;
+		app_bt_le_audio_iso_data_path_remove(bis_conn_handle, RTK_BLE_AUDIO_ISO_DATA_PATH_RX);
+	}
 	return ret;
 }
 
@@ -885,22 +908,22 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 	case RTK_BT_LE_GAP_EVT_ADV_START_IND: {
 		rtk_bt_le_adv_start_ind_t *adv_start_ind = (rtk_bt_le_adv_start_ind_t *)param;
 		if (!adv_start_ind->err) {
-			printf("[APP]ADV started: adv_type %d \r\n", adv_start_ind->adv_type);
+			BT_LOGA("[APP]ADV started: adv_type %d \r\n", adv_start_ind->adv_type);
 		} else {
-			printf("[APP]ADV start failed, err 0x%x \r\n", adv_start_ind->err);
+			BT_LOGE("[APP]ADV start failed, err 0x%x \r\n", adv_start_ind->err);
 		}
-		BT_AT_PRINT("+BLEGAP=adv,start,%d,%d\r\n", (adv_start_ind->err == 0) ? 0 : -1, adv_start_ind->adv_type);
+		BT_AT_PRINT("+BLEGAP:adv,start,%d,%d\r\n", (adv_start_ind->err == 0) ? 0 : -1, adv_start_ind->adv_type);
 		break;
 	}
 
 	case RTK_BT_LE_GAP_EVT_ADV_STOP_IND: {
 		rtk_bt_le_adv_stop_ind_t *adv_stop_ind = (rtk_bt_le_adv_stop_ind_t *)param;
 		if (!adv_stop_ind->err) {
-			printf("[APP]ADV stopped: reason 0x%x \r\n", adv_stop_ind->stop_reason);
+			BT_LOGA("[APP]ADV stopped: reason 0x%x \r\n", adv_stop_ind->stop_reason);
 		} else {
-			printf("[APP]ADV stop failed, err 0x%x \r\n", adv_stop_ind->err);
+			BT_LOGE("[APP]ADV stop failed, err 0x%x \r\n", adv_stop_ind->err);
 		}
-		BT_AT_PRINT("+BLEGAP=adv,stop,%d,0x%x\r\n", (adv_stop_ind->err == 0) ? 0 : -1, adv_stop_ind->stop_reason);
+		BT_AT_PRINT("+BLEGAP:adv,stop,%d,0x%x\r\n", (adv_stop_ind->err == 0) ? 0 : -1, adv_stop_ind->stop_reason);
 		break;
 	}
 
@@ -909,15 +932,15 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 		rtk_bt_le_ext_adv_ind_t *ext_adv_ind = (rtk_bt_le_ext_adv_ind_t *)param;
 		if (!ext_adv_ind->err) {
 			if (ext_adv_ind->is_start) {
-				printf("[APP] Ext ADV(%d) started\r\n", ext_adv_ind->adv_handle);
+				BT_LOGA("[APP] Ext ADV(%d) started\r\n", ext_adv_ind->adv_handle);
 			} else {
-				printf("[APP] Ext ADV(%d) stopped: reason 0x%x \r\n", ext_adv_ind->adv_handle, ext_adv_ind->stop_reason);
+				BT_LOGA("[APP] Ext ADV(%d) stopped: reason 0x%x \r\n", ext_adv_ind->adv_handle, ext_adv_ind->stop_reason);
 			}
 		} else {
 			if (ext_adv_ind->is_start) {
-				printf("[APP] Ext ADV(%d) started failed, err 0x%x\r\n", ext_adv_ind->adv_handle, ext_adv_ind->err);
+				BT_LOGE("[APP] Ext ADV(%d) started failed, err 0x%x\r\n", ext_adv_ind->adv_handle, ext_adv_ind->err);
 			} else {
-				printf("[APP] Ext ADV(%d) stopped failed, err 0x%x\r\n", ext_adv_ind->adv_handle, ext_adv_ind->err);
+				BT_LOGE("[APP] Ext ADV(%d) stopped failed, err 0x%x\r\n", ext_adv_ind->adv_handle, ext_adv_ind->err);
 			}
 		}
 		BT_AT_PRINT("+BLEGAP:eadv,%s,%d,%d\r\n",
@@ -931,9 +954,9 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 	case RTK_BT_LE_GAP_EVT_SCAN_START_IND: {
 		rtk_bt_le_scan_start_ind_t *scan_start_ind = (rtk_bt_le_scan_start_ind_t *)param;
 		if (!scan_start_ind->err) {
-			printf("[APP] Scan started, scan_type: %d\r\n", scan_start_ind->scan_type);
+			BT_LOGA("[APP] Scan started, scan_type: %d\r\n", scan_start_ind->scan_type);
 		} else {
-			printf("[APP] Scan start failed(err: 0x%x)\r\n", scan_start_ind->err);
+			BT_LOGE("[APP] Scan start failed(err: 0x%x)\r\n", scan_start_ind->err);
 		}
 		BT_AT_PRINT("+BLEGAP:scan,start,%d,%d\r\n", (scan_start_ind->err == 0) ? 0 : -1, scan_start_ind->scan_type);
 		break;
@@ -942,9 +965,9 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 	case RTK_BT_LE_GAP_EVT_SCAN_RES_IND: {
 		rtk_bt_le_scan_res_ind_t *scan_res_ind = (rtk_bt_le_scan_res_ind_t *)param;
 		rtk_bt_le_addr_to_str(&(scan_res_ind->adv_report.addr), le_addr, sizeof(le_addr));
-		printf("[APP] Scan info, [Device]: %s, AD evt type: %d, RSSI: %i, len: %d \r\n",
-			   le_addr, scan_res_ind->adv_report.evt_type, scan_res_ind->adv_report.rssi,
-			   scan_res_ind->adv_report.len);
+		BT_LOGA("[APP] Scan info, [Device]: %s, AD evt type: %d, RSSI: %i, len: %d \r\n",
+				le_addr, scan_res_ind->adv_report.evt_type, scan_res_ind->adv_report.rssi,
+				scan_res_ind->adv_report.len);
 		BT_AT_PRINT("+BLEGAP:scan,info,%s,%d,%i,%d\r\n",
 					le_addr, scan_res_ind->adv_report.evt_type, scan_res_ind->adv_report.rssi,
 					scan_res_ind->adv_report.len);
@@ -956,10 +979,10 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 		rtk_bt_le_ext_scan_res_ind_t *scan_res_ind = (rtk_bt_le_ext_scan_res_ind_t *)param;
 		rtk_bt_le_addr_to_str(&(scan_res_ind->addr), le_addr, sizeof(le_addr));
 #if 0
-		printf("[APP] Ext Scan info, [Device]: %s, AD evt type: 0x%x, RSSI: %i, PHY: 0x%x, TxPower: %d, Len: %d\r\n",
-			   le_addr, scan_res_ind->evt_type, scan_res_ind->rssi,
-			   (scan_res_ind->primary_phy << 4) | scan_res_ind->secondary_phy,
-			   scan_res_ind->tx_power, scan_res_ind->len);
+		BT_LOGA("[APP] Ext Scan info, [Device]: %s, AD evt type: 0x%x, RSSI: %i, PHY: 0x%x, TxPower: %d, Len: %d\r\n",
+				le_addr, scan_res_ind->evt_type, scan_res_ind->rssi,
+				(scan_res_ind->primary_phy << 4) | scan_res_ind->secondary_phy,
+				scan_res_ind->tx_power, scan_res_ind->len);
 #endif
 		BT_AT_PRINT("+BLEGAP:escan,%s,0x%x,%i,0x%x,%d,%d\r\n",
 					le_addr, scan_res_ind->evt_type, scan_res_ind->rssi,
@@ -979,12 +1002,12 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 	case RTK_BT_LE_GAP_EVT_SCAN_STOP_IND: {
 		rtk_bt_le_scan_stop_ind_t *scan_stop_ind = (rtk_bt_le_scan_stop_ind_t *)param;
 		if (!scan_stop_ind->err) {
-			printf("[APP] Scan stopped, reason: 0x%x\r\n", scan_stop_ind->stop_reason);
+			BT_LOGA("[APP] Scan stopped, reason: 0x%x\r\n", scan_stop_ind->stop_reason);
 			if (pbp_role & (RTK_BT_LE_AUDIO_PBP_ROLE_BROADCAST_ASSISTANT | RTK_BT_LE_AUDIO_PBP_ROLE_BROADCAST_SINK)) {
 				app_bt_le_audio_bass_scan_report_show();
 			}
 		} else {
-			printf("[APP] Scan stop failed(err: 0x%x)\r\n", scan_stop_ind->err);
+			BT_LOGE("[APP] Scan stop failed(err: 0x%x)\r\n", scan_stop_ind->err);
 		}
 		BT_AT_PRINT("+BLEGAP:scan,stop,%d,0x%x\r\n", (scan_stop_ind->err == 0) ? 0 : -1, scan_stop_ind->stop_reason);
 		break;
@@ -995,19 +1018,19 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 		rtk_bt_le_addr_to_str(&(conn_ind->peer_addr), le_addr, sizeof(le_addr));
 		if (!conn_ind->err) {
 			role = conn_ind->role ? "slave" : "master";
-			printf("[APP] Connected, handle: %d, role: %s, remote device: %s\r\n",
-				   (int)conn_ind->conn_handle, role, le_addr);
+			BT_LOGA("[APP] Connected, handle: %d, role: %s, remote device: %s\r\n",
+					(int)conn_ind->conn_handle, role, le_addr);
 			if (RTK_BT_LE_AUDIO_PBP_ROLE_BROADCAST_ASSISTANT == pbp_role) {
 				app_bt_le_audio_broadcast_assistant_info_t *p_bro_assi_info = &g_pbp_bro_assi_info;
 				p_bro_assi_info->status = RTK_BLE_AUDIO_BROADCAST_ASSISTANT_CONN;
 				uint16_t ret = RTK_BT_OK;
 				if ((ret = rtk_bt_le_sm_start_security(conn_ind->conn_handle)) != RTK_BT_OK) {
-					printf("[APP] GAP start security flow failed! err: 0x%x", ret);
+					BT_LOGE("[APP] GAP start security flow failed! err: 0x%x", ret);
 					break;
 				}
 			}
 		} else {
-			printf("[APP] Connection establish failed(err: 0x%x), remote device: %s\r\n", conn_ind->err, le_addr);
+			BT_LOGE("[APP] Connection establish failed(err: 0x%x), remote device: %s\r\n", conn_ind->err, le_addr);
 		}
 		BT_AT_PRINT("+BLEGAP:conn,%d,%d,%s\r\n", (conn_ind->err == 0) ? 0 : -1, (int)conn_ind->conn_handle, le_addr);
 		break;
@@ -1017,8 +1040,8 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 		rtk_bt_le_disconn_ind_t *disconn_ind = (rtk_bt_le_disconn_ind_t *)param;
 		rtk_bt_le_addr_to_str(&(disconn_ind->peer_addr), le_addr, sizeof(le_addr));
 		role = disconn_ind->role ? "slave" : "master";
-		printf("[APP] Disconnected, reason: 0x%x, handle: %d, role: %s, remote device: %s\r\n",
-			   disconn_ind->reason, disconn_ind->conn_handle, role, le_addr);
+		BT_LOGA("[APP] Disconnected, reason: 0x%x, handle: %d, role: %s, remote device: %s\r\n",
+				disconn_ind->reason, disconn_ind->conn_handle, role, le_addr);
 		BT_AT_PRINT("+BLEGAP:disconn,0x%x,%d,%s,%s\r\n",
 					disconn_ind->reason, disconn_ind->conn_handle, role, le_addr);
 		if (RTK_BT_LE_AUDIO_PBP_ROLE_BROADCAST_SINK == pbp_role) {
@@ -1033,16 +1056,16 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 	case RTK_BT_LE_GAP_EVT_CONN_UPDATE_IND: {
 		rtk_bt_le_conn_update_ind_t *conn_update_ind = (rtk_bt_le_conn_update_ind_t *)param;
 		if (conn_update_ind->err) {
-			printf("[APP] Update conn param failed, conn_handle: %d, err: 0x%x\r\n",
-				   conn_update_ind->conn_handle, conn_update_ind->err);
+			BT_LOGE("[APP] Update conn param failed, conn_handle: %d, err: 0x%x\r\n",
+					conn_update_ind->conn_handle, conn_update_ind->err);
 			BT_AT_PRINT("+BLEGAP:conn_update,%d,-1\r\n", conn_update_ind->conn_handle);
 		} else {
-			printf("[APP] Conn param is updated, conn_handle: %d, conn_interval: 0x%x, "\
-				   "conn_latency: 0x%x, supervision_timeout: 0x%x\r\n",
-				   conn_update_ind->conn_handle,
-				   conn_update_ind->conn_interval,
-				   conn_update_ind->conn_latency,
-				   conn_update_ind->supv_timeout);
+			BT_LOGA("[APP] Conn param is updated, conn_handle: %d, conn_interval: 0x%x, "\
+					"conn_latency: 0x%x, supervision_timeout: 0x%x\r\n",
+					conn_update_ind->conn_handle,
+					conn_update_ind->conn_interval,
+					conn_update_ind->conn_latency,
+					conn_update_ind->supv_timeout);
 			BT_AT_PRINT("+BLEGAP:conn_update,%d,0,0x%x,0x%x,0x%x\r\n",
 						conn_update_ind->conn_handle,
 						conn_update_ind->conn_interval,
@@ -1055,28 +1078,28 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 
 	case RTK_BT_LE_GAP_EVT_REMOTE_CONN_UPDATE_REQ_IND: { //BT api shall not be called here
 		rtk_bt_le_remote_conn_update_req_ind_t *rmt_update_req = (rtk_bt_le_remote_conn_update_req_ind_t *)param;
-		printf("[APP] Remote device request a change in conn param, conn_handle: %d, "\
-			   "conn_interval_max: 0x%x, conn_interval_min: 0x%x, conn_latency: 0x%x, "\
-			   "timeout: 0x%x. The host stack accept it.\r\n",
-			   rmt_update_req->conn_handle,
-			   rmt_update_req->conn_interval_max,
-			   rmt_update_req->conn_interval_min,
-			   rmt_update_req->conn_latency,
-			   rmt_update_req->supv_timeout);
+		BT_LOGA("[APP] Remote device request a change in conn param, conn_handle: %d, "\
+				"conn_interval_max: 0x%x, conn_interval_min: 0x%x, conn_latency: 0x%x, "\
+				"timeout: 0x%x. The host stack accept it.\r\n",
+				rmt_update_req->conn_handle,
+				rmt_update_req->conn_interval_max,
+				rmt_update_req->conn_interval_min,
+				rmt_update_req->conn_latency,
+				rmt_update_req->supv_timeout);
 		return RTK_BT_EVT_CB_ACCEPT;
 		break;
 	}
 
 	case RTK_BT_LE_GAP_EVT_DATA_LEN_CHANGE_IND: {
 		rtk_bt_le_data_len_change_ind_t *data_len_change = (rtk_bt_le_data_len_change_ind_t *)param;
-		printf("[APP] Data len is updated, conn_handle: %d, "       \
-			   "max_tx_octets: 0x%x, max_tx_time: 0x%x, "        \
-			   "max_rx_octets: 0x%x, max_rx_time: 0x%x\r\n",
-			   data_len_change->conn_handle,
-			   data_len_change->max_tx_octets,
-			   data_len_change->max_tx_time,
-			   data_len_change->max_rx_octets,
-			   data_len_change->max_rx_time);
+		BT_LOGA("[APP] Data len is updated, conn_handle: %d, "       \
+				"max_tx_octets: 0x%x, max_tx_time: 0x%x, "        \
+				"max_rx_octets: 0x%x, max_rx_time: 0x%x\r\n",
+				data_len_change->conn_handle,
+				data_len_change->max_tx_octets,
+				data_len_change->max_tx_time,
+				data_len_change->max_rx_octets,
+				data_len_change->max_rx_time);
 		BT_AT_PRINT("+BLEGAP:conn_datalen,%d,0x%x,0x%x,0x%x,0x%x\r\n",
 					data_len_change->conn_handle,
 					data_len_change->max_tx_octets,
@@ -1090,15 +1113,15 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 		rtk_bt_le_phy_update_ind_t *phy_update_ind =
 			(rtk_bt_le_phy_update_ind_t *)param;
 		if (phy_update_ind->err) {
-			printf("[APP] Update PHY failed, conn_handle: %d, err: 0x%x\r\n",
-				   phy_update_ind->conn_handle,
-				   phy_update_ind->err);
+			BT_LOGE("[APP] Update PHY failed, conn_handle: %d, err: 0x%x\r\n",
+					phy_update_ind->conn_handle,
+					phy_update_ind->err);
 			BT_AT_PRINT("+BLEGAP:conn_phy,%d,-1\r\n", phy_update_ind->conn_handle);
 		} else {
-			printf("[APP] PHY is updated, conn_handle: %d, tx_phy: %d, rx_phy: %d\r\n",
-				   phy_update_ind->conn_handle,
-				   phy_update_ind->tx_phy,
-				   phy_update_ind->rx_phy);
+			BT_LOGA("[APP] PHY is updated, conn_handle: %d, tx_phy: %d, rx_phy: %d\r\n",
+					phy_update_ind->conn_handle,
+					phy_update_ind->tx_phy,
+					phy_update_ind->rx_phy);
 			BT_AT_PRINT("+BLEGAP:conn_phy,%d,0,%d,%d\r\n",
 						phy_update_ind->conn_handle,
 						phy_update_ind->tx_phy,
@@ -1110,24 +1133,24 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 	case RTK_BT_LE_GAP_EVT_AUTH_PAIRING_CONFIRM_IND: {
 		uint16_t ret = 0;
 		rtk_bt_le_auth_pair_cfm_ind_t *pair_cfm_ind = (rtk_bt_le_auth_pair_cfm_ind_t *)param;
-		APP_PROMOTE("[APP] Just work pairing need user to confirm, conn_handle: %d!\r\n",
-					pair_cfm_ind->conn_handle);
+		BT_LOGA("[APP] Just work pairing need user to confirm, conn_handle: %d!\r\n",
+				pair_cfm_ind->conn_handle);
 		BT_AT_PRINT("+BLEGAP:pair_cfm,%d\r\n", pair_cfm_ind->conn_handle);
 		rtk_bt_le_pair_cfm_t pair_cfm_param = {0};
 		pair_cfm_param.conn_handle = pair_cfm_ind->conn_handle;
 		pair_cfm_param.confirm = 1;
 		ret = rtk_bt_le_sm_pairing_confirm(&pair_cfm_param);
 		if (RTK_BT_OK == ret) {
-			printf("[APP] Just work pairing auto confirm succcess\r\n");
+			BT_LOGA("[APP] Just work pairing auto confirm succcess\r\n");
 		}
 		break;
 	}
 
 	case RTK_BT_LE_GAP_EVT_AUTH_PASSKEY_DISPLAY_IND: {
 		rtk_bt_le_auth_key_display_ind_t *key_dis_ind = (rtk_bt_le_auth_key_display_ind_t *)param;
-		APP_PROMOTE("[APP] Auth passkey display: %d, conn_handle:%d\r\n",
-					(int)key_dis_ind->passkey,
-					(int)key_dis_ind->conn_handle);
+		BT_LOGA("[APP] Auth passkey display: %d, conn_handle:%d\r\n",
+				(int)key_dis_ind->passkey,
+				(int)key_dis_ind->conn_handle);
 		BT_AT_PRINT("+BLEGAP:passkey_display,%d,%d\r\n",
 					(int)key_dis_ind->conn_handle,
 					(int)key_dis_ind->passkey);
@@ -1136,18 +1159,18 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 
 	case RTK_BT_LE_GAP_EVT_AUTH_PASSKEY_INPUT_IND: {
 		rtk_bt_le_auth_key_input_ind_t *key_input_ind = (rtk_bt_le_auth_key_input_ind_t *)param;
-		APP_PROMOTE("[APP] Please input the auth passkey get from remote, conn_handle: %d\r\n",
-					key_input_ind->conn_handle);
+		BT_LOGA("[APP] Please input the auth passkey get from remote, conn_handle: %d\r\n",
+				key_input_ind->conn_handle);
 		BT_AT_PRINT("+BLEGAP:passkey_input,%d\r\n", key_input_ind->conn_handle);
 		break;
 	}
 
 	case RTK_BT_LE_GAP_EVT_AUTH_PASSKEY_CONFIRM_IND: {
 		rtk_bt_le_auth_key_cfm_ind_t *key_cfm_ind = (rtk_bt_le_auth_key_cfm_ind_t *)param;
-		APP_PROMOTE("[APP] Auth passkey confirm: %d, conn_handle: %d. "  \
-					"Please comfirm if the passkeys are equal!\r\n",
-					(int)key_cfm_ind->passkey,
-					(int)key_cfm_ind->conn_handle);
+		BT_LOGA("[APP] Auth passkey confirm: %d, conn_handle: %d. "  \
+				"Please comfirm if the passkeys are equal!\r\n",
+				(int)key_cfm_ind->passkey,
+				(int)key_cfm_ind->conn_handle);
 		BT_AT_PRINT("+BLEGAP:passkey_cfm,%d,%d\r\n",
 					(int)key_cfm_ind->conn_handle,
 					(int)key_cfm_ind->passkey);
@@ -1156,8 +1179,8 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 
 	case RTK_BT_LE_GAP_EVT_AUTH_OOB_KEY_INPUT_IND: {
 		rtk_bt_le_auth_oob_input_ind_t *oob_input_ind = (rtk_bt_le_auth_oob_input_ind_t *)param;
-		APP_PROMOTE("[APP] Bond use oob key, conn_handle: %d. Please input the oob tk \r\n",
-					oob_input_ind->conn_handle);
+		BT_LOGA("[APP] Bond use oob key, conn_handle: %d. Please input the oob tk \r\n",
+				oob_input_ind->conn_handle);
 		BT_AT_PRINT("+BLEGAP:oobkey_input,%d\r\n", oob_input_ind->conn_handle);
 		break;
 	}
@@ -1168,22 +1191,18 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 					auth_cplt_ind->conn_handle,
 					(auth_cplt_ind->err == 0) ? 0 : -1);
 		if (auth_cplt_ind->err) {
-			printf("[APP] Pairing failed(err: 0x%x), conn_handle: %d\r\n",
-				   auth_cplt_ind->err, auth_cplt_ind->conn_handle);
+			BT_LOGE("[APP] Pairing failed(err: 0x%x), conn_handle: %d\r\n",
+					auth_cplt_ind->err, auth_cplt_ind->conn_handle);
 		} else {
-			printf("[APP] Pairing success, conn_handle: %d\r\n", auth_cplt_ind->conn_handle);
-			printf("[APP] long term key is 0x");
-			for (uint8_t i = 1; i <= auth_cplt_ind->dev_ltk_length; i++) {
-				printf("%02x", auth_cplt_ind->dev_ltk[auth_cplt_ind->dev_ltk_length - i]); //End size conversion
-			}
-			printf("\r\n");
+			BT_LOGA("[APP] Pairing success, conn_handle: %d\r\n", auth_cplt_ind->conn_handle);
+			BT_DUMPHEXA("[APP] long term key is 0x", auth_cplt_ind->dev_ltk, auth_cplt_ind->dev_ltk_length, true);
 			if (RTK_BT_LE_AUDIO_PBP_ROLE_BROADCAST_ASSISTANT == pbp_role) {
 				uint16_t ret = rtk_bt_gattc_discover_all(auth_cplt_ind->conn_handle);
 				if (RTK_BT_OK != ret) {
-					printf("[APP] GATTC Discover failed! err: 0x%x\r\n", ret);
+					BT_LOGE("[APP] GATTC Discover failed! err: 0x%x\r\n", ret);
 					break;
 				} else {
-					printf("[APP] GATTC Discover Start, waiting ...\r\n");
+					BT_LOGA("[APP] GATTC Discover Start, waiting ...\r\n");
 				}
 			}
 		}
@@ -1195,7 +1214,7 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 		char ident_addr[30] = {0};
 		rtk_bt_le_addr_to_str(&(bond_mdf_ind->remote_addr), le_addr, sizeof(le_addr));
 		rtk_bt_le_addr_to_str(&(bond_mdf_ind->ident_addr), ident_addr, sizeof(ident_addr));
-		printf("[APP] Bond info modified, op: %d, addr: %s, ident_addr: %s\r\n", bond_mdf_ind->op, le_addr, ident_addr);
+		BT_LOGA("[APP] Bond info modified, op: %d, addr: %s, ident_addr: %s\r\n", bond_mdf_ind->op, le_addr, ident_addr);
 		BT_AT_PRINT("+BLEGAP:bond_modify,%d,%s,%s\r\n", bond_mdf_ind->op, le_addr, ident_addr);
 		break;
 	}
@@ -1210,22 +1229,22 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 			memcpy(addr.addr_val, p_ind->entry.addr, RTK_BD_ADDR_LEN);
 			rtk_bt_le_addr_to_str(&addr, le_addr, sizeof(le_addr));
 			if (p_ind->err) {
-				printf("[APP] Resolving list %s %s fail, cause:%x.\r\n",
-					   (p_ind->op == RTK_BT_LE_RESOLV_LIST_OP_ADD) ? "add" : "remove",
-					   le_addr, p_ind->err);
+				BT_LOGE("[APP] Resolving list %s %s fail, cause:%x.\r\n",
+						(p_ind->op == RTK_BT_LE_RESOLV_LIST_OP_ADD) ? "add" : "remove",
+						le_addr, p_ind->err);
 				BT_AT_PRINT("+BLEGAP:resolv_list_modify,%d,-1\r\n", p_ind->op);
 			} else {
-				printf("[APP] Resolving list %s %s success, %s privacy mode.\r\n",
-					   (p_ind->op == RTK_BT_LE_RESOLV_LIST_OP_ADD) ? "add" : "remove",
-					   le_addr, p_ind->entry.device_mode ? "device" : "network");
+				BT_LOGA("[APP] Resolving list %s %s success, %s privacy mode.\r\n",
+						(p_ind->op == RTK_BT_LE_RESOLV_LIST_OP_ADD) ? "add" : "remove",
+						le_addr, p_ind->entry.device_mode ? "device" : "network");
 				BT_AT_PRINT("+BLEGAP:resolv_list_modify,%d,0,%s,%s\r\n",
 							p_ind->op, le_addr, p_ind->entry.device_mode ? "device" : "network");
 			}
 		} else if (p_ind->op == RTK_BT_LE_RESOLV_LIST_OP_CLEAR) {
 			if (p_ind->err) {
-				printf("[APP] Resolving list clear fail, cause:%x.\r\n", p_ind->err);
+				BT_LOGE("[APP] Resolving list clear fail, cause:%x.\r\n", p_ind->err);
 			} else {
-				printf("[APP] Resolving list clear success.\r\n");
+				BT_LOGA("[APP] Resolving list clear success.\r\n");
 			}
 			BT_AT_PRINT("+BLEGAP:resolv_list_modify,%d,%d\r\n", p_ind->op, (p_ind->err == 0) ? 0 : -1);
 		}
@@ -1236,14 +1255,14 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 #if defined(RTK_BLE_5_0_PA_SYNC_SUPPORT) && RTK_BLE_5_0_PA_SYNC_SUPPORT
 	case RTK_BT_LE_GAP_EVT_PA_SYNC_STATE_IND: {
 		rtk_bt_le_pa_sync_ind_t *pa_sync_ind = (rtk_bt_le_pa_sync_ind_t *)param;
-		printf("[APP] PA sync state change: sync_id: %d, state = %d, cause: 0x%x\r\n",
-			   pa_sync_ind->sync_id, pa_sync_ind->state, pa_sync_ind->cause);
+		BT_LOGA("[APP] PA sync state change: sync_id: %d, state = %d, cause: 0x%x\r\n",
+				pa_sync_ind->sync_id, pa_sync_ind->state, pa_sync_ind->cause);
 
 		if (pa_sync_ind->state == RTK_BT_LE_PA_SYNC_STATE_SYNCHRONIZED) {
 			rtk_bt_le_pa_synced_info_t *p_info = &pa_sync_ind->info;
 			rtk_bt_le_addr_to_str(&p_info->addr, le_addr, sizeof(le_addr));
-			printf("[APP] PA SYNCHRONIZED PARAM: [Device]: %s, sync_handle:0x%x, adv_sid: %d, past_received: %d\r\n",
-				   le_addr, p_info->sync_handle, p_info->adv_sid, p_info->past_received);
+			BT_LOGA("[APP] PA SYNCHRONIZED PARAM: [Device]: %s, sync_handle:0x%x, adv_sid: %d, past_received: %d\r\n",
+					le_addr, p_info->sync_handle, p_info->adv_sid, p_info->past_received);
 			BT_AT_PRINT("+BLEGAP:pa_sync,%s,0x%x,%d,%d\r\n",
 						le_addr, p_info->sync_handle, p_info->adv_sid, p_info->past_received);
 		}
@@ -1252,9 +1271,9 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 
 	case RTK_BT_LE_GAP_EVT_PA_ADV_REPORT_IND: {
 		rtk_bt_le_pa_adv_report_ind_t *pa_report = (rtk_bt_le_pa_adv_report_ind_t *)param;
-		printf("[APP] PA sync ADV report: sync_id %d, sync_handle 0x%x, tx_power %d, rssi %d, cte_type %d, data_status 0x%x, data_len %d\r\n",
-			   pa_report->sync_id, pa_report->sync_handle, pa_report->tx_power, pa_report->rssi,
-			   pa_report->cte_type, pa_report->data_status, pa_report->data_len);
+		BT_LOGA("[APP] PA sync ADV report: sync_id %d, sync_handle 0x%x, tx_power %d, rssi %d, cte_type %d, data_status 0x%x, data_len %d\r\n",
+				pa_report->sync_id, pa_report->sync_handle, pa_report->tx_power, pa_report->rssi,
+				pa_report->cte_type, pa_report->data_status, pa_report->data_len);
 		BT_AT_PRINT("+BLEGAP:pa_report,%d,0x%x,%d,%d,%d,0x%x,%d\r\n",
 					pa_report->sync_id, pa_report->sync_handle, pa_report->tx_power, pa_report->rssi,
 					pa_report->cte_type, pa_report->data_status, pa_report->data_len);
@@ -1265,8 +1284,8 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 #if defined(RTK_BLE_5_2_POWER_CONTROL_SUPPORT) && RTK_BLE_5_2_POWER_CONTROL_SUPPORT
 	case RTK_BT_LE_GAP_EVT_TXPOWER_REPORT_IND: {
 		rtk_bt_le_txpower_ind_t *txpower_ind = (rtk_bt_le_txpower_ind_t *)param;
-		printf("[APP] TX power report: conn_handle %d, type %d, txpower %d\r\n",
-			   txpower_ind->conn_handle, txpower_ind->type, txpower_ind->txpower);
+		BT_LOGA("[APP] TX power report: conn_handle %d, type %d, txpower %d\r\n",
+				txpower_ind->conn_handle, txpower_ind->type, txpower_ind->txpower);
 		BT_AT_PRINT("+BLEGAP:txpower_report,%d,%d,%d\r\n",
 					txpower_ind->conn_handle, txpower_ind->type, txpower_ind->txpower);
 		break;
@@ -1274,7 +1293,7 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_gap_callback(uint8_t evt_code, void *
 #endif
 
 	default:
-		printf("[APP] Unkown gap cb evt type: %d\r\n", evt_code);
+		BT_LOGE("[APP] Unkown gap cb evt type: %d\r\n", evt_code);
 		break;
 	}
 
@@ -1287,10 +1306,10 @@ static rtk_bt_evt_cb_ret_t rtk_bt_pbp_broadcast_assistant_gattc_app_callback(uin
 	if (RTK_BT_GATTC_EVT_MTU_EXCHANGE == event) {
 		rtk_bt_gatt_mtu_exchange_ind_t *p_gatt_mtu_ind = (rtk_bt_gatt_mtu_exchange_ind_t *)data;
 		if (p_gatt_mtu_ind->result == RTK_BT_OK) {
-			printf("[APP] GATTC mtu exchange success, mtu_size: %d, conn_handle: %d \r\n",
-				   p_gatt_mtu_ind->mtu_size, p_gatt_mtu_ind->conn_handle);
+			BT_LOGA("[APP] GATTC mtu exchange success, mtu_size: %d, conn_handle: %d \r\n",
+					p_gatt_mtu_ind->mtu_size, p_gatt_mtu_ind->conn_handle);
 		} else {
-			printf("[APP] GATTC mtu exchange fail \r\n");
+			BT_LOGE("[APP] GATTC mtu exchange fail \r\n");
 		}
 		return RTK_BT_EVT_CB_OK;
 	}
@@ -1310,8 +1329,10 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 	/*********************************************pbp_broadcast_source_event**********************************************/
 	case RTK_BT_LE_AUDIO_EVT_BROADCAST_SOURCE_STATE_IND: {
 		rtk_bt_le_audio_broadcast_source_state_ind_t *param = (rtk_bt_le_audio_broadcast_source_state_ind_t *)data;
-		BT_LOGD("[APP] broadcast source state change: broadcast_source_handle: %p, broadcast_source_state 0x%x, cause: 0x%x\r\n",
+		BT_LOGD("[APP] broadcast source state change: broadcast_source_handle: %08x, broadcast_source_state 0x%x, cause: 0x%x\r\n",
 				param->broadcast_source_handle, param->broadcast_source_state, param->cause);
+		BT_AT_PRINT("+BLEBAP:broadcast,source,state,%p,0x%x,0x%x\r\n",
+					param->broadcast_source_handle, param->broadcast_source_state, param->cause);
 		// update broadcast state
 		p_bsrc_info->broadcast_source_state = param->broadcast_source_state;
 		if (param->broadcast_source_state == RTK_BT_LE_AUDIO_BROADCAST_SOURCE_STATE_IDLE) {
@@ -1353,7 +1374,7 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 		rtk_bt_le_audio_direct_iso_data_ind_t *p_bt_direct_iso = (rtk_bt_le_audio_direct_iso_data_ind_t *)data;
 		app_lea_iso_data_path_t *p_iso_path = NULL;
 		if (p_bt_direct_iso->iso_sdu_len) {
-			BT_LOGD("[APP] RTK_BT_LE_AUDIO_EVT_ISO_DATA_RECEIVE_IND, sys_time=%d,iso_conn_handle 0x%x, pkt_status_flag 0x%x, pkt_seq_num 0x%x, ts_flag 0x%x, time_stamp 0x%x,iso_sdu_len 0x%x, p_buf %p, buf_len %d, offset %d\r\n",
+			BT_LOGD("[APP] RTK_BT_LE_AUDIO_EVT_ISO_DATA_RECEIVE_IND, sys_time=%d,iso_conn_handle 0x%x, pkt_status_flag 0x%x, pkt_seq_num 0x%x, ts_flag 0x%x, time_stamp 0x%x,iso_sdu_len 0x%x, p_buf %08x, buf_len %d, offset %d\r\n",
 					(int)osif_sys_time_get(), p_bt_direct_iso->iso_conn_handle, p_bt_direct_iso->pkt_status_flag,
 					p_bt_direct_iso->pkt_seq_num, p_bt_direct_iso->ts_flag,
 					(unsigned int)p_bt_direct_iso->time_stamp, p_bt_direct_iso->iso_sdu_len, p_bt_direct_iso->p_buf, p_bt_direct_iso->buf_len, p_bt_direct_iso->offset);
@@ -1368,7 +1389,8 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 											   p_iso_path->track_hdl,
 											   p_iso_path->codec_entity,
 											   p_bt_direct_iso->p_buf + p_bt_direct_iso->offset,
-											   p_bt_direct_iso->iso_sdu_len)) {
+											   p_bt_direct_iso->iso_sdu_len,
+											   0)) {
 					BT_LOGE("[APP] %s Stream Data receive Fail! \r\n", __func__);
 					p_iso_path->status_fail_cnt++;
 				} else {
@@ -1385,11 +1407,15 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 
 	case RTK_BT_LE_AUDIO_EVT_PA_SYNC_STATE_IND: {
 		rtk_bt_le_audio_pa_sync_state_ind_t *param = (rtk_bt_le_audio_pa_sync_state_ind_t *)data;
-		BT_LOGD("[APP] broadcast sink pa sync state change: sync_handle: %p, sync_state 0x%x, action 0x%x, cause: 0x%x\r\n",
+		BT_LOGD("[APP] broadcast sink pa sync state change: sync_handle: %08x, sync_state 0x%x, action 0x%x, cause: 0x%x\r\n",
 				param->sync_handle, param->sync_state, param->action, param->cause);
+		BT_AT_PRINT("+BLEBAP:broadcast,%s,sync_state,%p,0x%x,0x%x,0x%x\r\n",
+					(pbp_role & RTK_BT_LE_AUDIO_PBP_ROLE_BROADCAST_SINK) ? "sink" : "assistant",
+					param->sync_handle, param->sync_state, param->action, param->cause);
+
 		p_sync_dev_info = app_bt_le_audio_sync_dev_list_find(param->sync_handle);
 		if (!p_sync_dev_info) {
-			BT_LOGE("[APP] %s not find sync dev info for sync_handle %p\r\n", __func__, param->sync_handle);
+			BT_LOGE("[APP] %s not find sync dev info for sync_handle %08x\r\n", __func__, param->sync_handle);
 			break;
 		}
 		p_sync_dev_info->pa_sync_state = param->sync_state;
@@ -1397,8 +1423,8 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 			BT_LOGA("[APP] broadcast sink pa sync synchronized\r\n");
 			if (RTK_BT_LE_AUDIO_PBP_ROLE_BROADCAST_ASSISTANT == pbp_role) {
 				//stop ext scan
-				ret = rtk_bt_le_gap_ext_scan_stop();
-				BT_LOGD("[APP] rtk_bt_le_gap_ext_scan_stop %s after pa sync synchronized! ret: 0x%x\r\n", ((RTK_BT_OK != ret) ? "fail" : "ok"), ret);
+				ret = rtk_bt_le_gap_stop_ext_scan();
+				BT_LOGD("[APP] rtk_bt_le_gap_stop_ext_scan %s after pa sync synchronized! ret: 0x%x\r\n", ((RTK_BT_OK != ret) ? "fail" : "ok"), ret);
 				//give sem to show pa sync list
 				app_bt_le_audio_bap_broadcast_assistant_info_t *p_bro_assi_info = g_pbp_bro_assi_info.p_bap_bro_assi_info;
 				if (p_bro_assi_info->pa_sync_ind_sem) {
@@ -1415,11 +1441,11 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 	case RTK_BT_LE_AUDIO_EVT_PA_BIG_INFO_IND: {
 		rtk_bt_le_audio_pa_biginfo_ind_t *param = (rtk_bt_le_audio_pa_biginfo_ind_t *)data;
 		if (RTK_BT_LE_AUDIO_PBP_ROLE_BROADCAST_SINK == pbp_role) {
-			BT_LOGD("[APP] broadcast sink pa biginfo indication: sync_handle: %p, num_bis 0x%x, sync_id 0x%x, pa_sync_handle 0x%x, encryption 0x%x\r\n",
+			BT_LOGD("[APP] broadcast sink pa biginfo indication: sync_handle: %08x, num_bis 0x%x, sync_id 0x%x, pa_sync_handle 0x%x, encryption 0x%x\r\n",
 					param->sync_handle, param->biginfo.num_bis, param->biginfo.sync_id, param->biginfo.pa_sync_handle, param->biginfo.encryption);
 			p_sync_dev_info = app_bt_le_audio_sync_dev_list_find(param->sync_handle);
 			if (!p_sync_dev_info) {
-				BT_LOGE("[APP] %s not find sync dev info for sync_handle %p \r\n", __func__, param->sync_handle);
+				BT_LOGE("[APP] %s not find sync dev info for sync_handle %08x \r\n", __func__, param->sync_handle);
 				break;
 			}
 			p_sync_dev_info->is_encryption = param->biginfo.encryption;
@@ -1438,7 +1464,7 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 				osif_sem_give(p_bsink_info->big_info_ind_sem);
 			}
 		} else if (RTK_BT_LE_AUDIO_PBP_ROLE_BROADCAST_ASSISTANT == pbp_role) {
-			BT_LOGD("[APP] broadcast assistant pa biginfo indication: sync_handle: %p, num_bis 0x%x, sync_id 0x%x, pa_sync_handle 0x%x, encryption 0x%x\r\n",
+			BT_LOGD("[APP] broadcast assistant pa biginfo indication: sync_handle: %08x, num_bis 0x%x, sync_id 0x%x, pa_sync_handle 0x%x, encryption 0x%x\r\n",
 					param->sync_handle, param->biginfo.num_bis, param->biginfo.sync_id, param->biginfo.pa_sync_handle, param->biginfo.encryption);
 		}
 		break;
@@ -1446,7 +1472,7 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 
 	case RTK_BT_LE_AUDIO_EVT_PA_ADV_REPORT_IND: {
 		rtk_bt_le_audio_pa_adv_report_ind_t *param = (rtk_bt_le_audio_pa_adv_report_ind_t *)data;
-		BT_LOGD("[APP] pa adv report: sync_handle: %p,sync_id %d, pa_sync_handle 0x%x,tx_power %d, rssi %d, cte_type %d, data_status 0x%x, data_len %d\r\n",
+		BT_LOGD("[APP] pa adv report: sync_handle: %08x,sync_id %d, pa_sync_handle 0x%x,tx_power %d, rssi %d, cte_type %d, data_status 0x%x, data_len %d\r\n",
 				param->sync_handle, param->sync_id, param->pa_sync_handle, param->tx_power, param->rssi, param->cte_type, param->data_status, param->data_len);
 		break;
 	}
@@ -1454,27 +1480,29 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 	// broadcast sink && scan delegator event
 	case RTK_BT_LE_AUDIO_EVT_BASE_DATA_MAPPING_MODIFY_IND: {
 		rtk_bt_le_audio_base_data_mapping_modify_ind_t *param = (rtk_bt_le_audio_base_data_mapping_modify_ind_t *)data;
-		BT_LOGD("[APP] broadcast sink base data modify: sync_handle: %p, base_data_mapping %p,\r\n", param->sync_handle, param->base_data_mapping);
+		BT_LOGD("[APP] broadcast sink base data modify: sync_handle: %08x, base_data_mapping %08x,\r\n", param->sync_handle, param->base_data_mapping);
 		p_sync_dev_info = app_bt_le_audio_sync_dev_list_find(param->sync_handle);
 		if (!p_sync_dev_info) {
-			BT_LOGE("[APP] %s not find sync dev info for sync_handle %p\r\n", __func__, param->sync_handle);
+			BT_LOGE("[APP] %s not find sync dev info for sync_handle %08x\r\n", __func__, param->sync_handle);
 			break;
 		}
 		if (param->base_data_mapping != p_sync_dev_info->base_data_mapping) {
 			p_sync_dev_info->base_data_mapping = param->base_data_mapping;
-			BT_LOGD("[APP] save new base_data_mapping %p for sync_handle %p\r\n", param->base_data_mapping, param->sync_handle);
+			BT_LOGD("[APP] save new base_data_mapping %08x for sync_handle %08x\r\n", param->base_data_mapping, param->sync_handle);
 		}
 		break;
 	}
 
 	case RTK_BT_LE_AUDIO_EVT_BIG_SYNC_STATE_IND: {
 		rtk_bt_le_audio_big_sync_state_ind_t *param = (rtk_bt_le_audio_big_sync_state_ind_t *)data;
-		BT_LOGD("[APP] broadcast sink big sync state change: sync_handle: %p, sync_state 0x%x, action 0x%x, cause: 0x%x\r\n",
+		BT_LOGD("[APP] broadcast sink big sync state change: sync_handle: %08x, sync_state 0x%x, action 0x%x, cause: 0x%x\r\n",
 				param->sync_handle, param->sync_state, param->action, param->cause);
+		BT_AT_PRINT("+BLEBAP:broadcast,sink,sync_state,%p,0x%x,0x%x,0x%x\r\n",
+					param->sync_handle, param->sync_state, param->action, param->cause);
 
 		p_sync_dev_info = app_bt_le_audio_sync_dev_list_find(param->sync_handle);
 		if (!p_sync_dev_info) {
-			BT_LOGE("[APP] %s not find sync dev info for sync_handle %p\r\n", __func__, param->sync_handle);
+			BT_LOGE("[APP] %s not find sync dev info for sync_handle %08x\r\n", __func__, param->sync_handle);
 			break;
 		}
 		p_sync_dev_info->big_sync_state = param->sync_state;
@@ -1491,14 +1519,17 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 				BT_LOGA("[APP] rtk_bt_le_audio_pa_sync_terminate %s after big sync synchronized! ret: 0x%x\r\n",
 						((RTK_BT_OK != ret) ? "fail" : "ok"), ret);
 				//stop ext scan
-				ret = rtk_bt_le_gap_ext_scan_stop();
-				BT_LOGA("[APP] rtk_bt_le_gap_ext_scan_stop %s after big sync synchronized! ret: 0x%x\r\n",
+				ret = rtk_bt_le_gap_stop_ext_scan();
+				BT_LOGA("[APP] rtk_bt_le_gap_stop_ext_scan %s after big sync synchronized! ret: 0x%x\r\n",
 						((RTK_BT_OK != ret) ? "fail" : "ok"), ret);
 			}
 			//init rx thread
 			app_bt_le_audio_pbp_bsink_decode_data_control(true);
 		} else if (param->sync_state == RTK_BT_LE_AUDIO_BIG_SYNC_STATE_TERMINATED) {
 			BT_LOGA("[APP] broadcast sink big sync termiated\r\n");
+			ret = app_bt_le_audio_pbp_bsink_remove_data_path(param->sync_handle);
+			BT_LOGA("[APP] app_bt_le_audio_pbp_bsink_remove_data_path %s after big sync terminated! ret: 0x%x\r\n",
+					((RTK_BT_OK != ret) ? "fail" : "ok"), ret);
 			ret = rtk_bt_le_audio_sync_release(param->sync_handle);
 			BT_LOGA("[APP] rtk_bt_le_audio_sync_release %s, ret: 0x%x\r\n", ((RTK_BT_OK != ret) ? "fail" : "ok"), ret);
 			//deinit rx thread
@@ -1531,11 +1562,16 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 					param->conn_handle, param->op_param.add_source_param.adv_addr.type, addr_str,
 					param->op_param.add_source_param.broadcast_id[2], param->op_param.add_source_param.broadcast_id[1], param->op_param.add_source_param.broadcast_id[0],
 					param->op_param.add_source_param.pa_sync, param->op_param.add_source_param.pa_interval, param->op_param.add_source_param.num_subgroups);
+			BT_AT_PRINT("+BLEBAP:broadcast,sink,bass,add_source,%d,%d,%s,%x%x%x,%d,%d,%d\r\n",
+						param->conn_handle, param->op_param.add_source_param.adv_addr.type, addr_str,
+						param->op_param.add_source_param.broadcast_id[2], param->op_param.add_source_param.broadcast_id[1], param->op_param.add_source_param.broadcast_id[0],
+						param->op_param.add_source_param.pa_sync, param->op_param.add_source_param.pa_interval, param->op_param.add_source_param.num_subgroups);
+
 			if (param->op_param.add_source_param.num_subgroups) {
 				BT_LOGD("[APP] RTK_BT_LE_AUDIO_EVT_BASS_CP_IND: bis_info_size %d, bis_sync_state %d, metadata_len %d\r\n",
 						param->op_param.add_source_param.bis_info_size, (unsigned int)param->op_param.add_source_param.p_cp_bis_info[0].bis_sync_state,
 						param->op_param.add_source_param.p_cp_bis_info[0].metadata_len);
-				BT_DUMPD(__func__, param->op_param.add_source_param.p_cp_bis_info[0].p_metadata,
+				BT_DUMPD("", param->op_param.add_source_param.p_cp_bis_info[0].p_metadata,
 						 param->op_param.add_source_param.p_cp_bis_info[0].metadata_len);
 			}
 		}
@@ -1545,11 +1581,16 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 			BT_LOGA("[APP] RTK_BT_LE_AUDIO_EVT_BASS_CP_IND: conn_handle %d RTK_BT_LE_AUDIO_BASS_CP_MODIFY_SOURCE,source_id %d,pa_sync %d,pa_interval %d,num_subgroups %d\r\n",
 					param->conn_handle, param->op_param.modify_source_param.source_id,
 					param->op_param.modify_source_param.pa_sync, param->op_param.modify_source_param.pa_interval, param->op_param.modify_source_param.num_subgroups);
+			BT_AT_PRINT("+BLEBAP:broadcast,sink,bass,modify_source,%d,%d,%d,%d,%d\r\n",
+						param->conn_handle, param->op_param.modify_source_param.source_id,
+						param->op_param.modify_source_param.pa_sync, param->op_param.modify_source_param.pa_interval,
+						param->op_param.modify_source_param.num_subgroups);
+
 			if (param->op_param.modify_source_param.num_subgroups) {
 				BT_LOGD("[APP] RTK_BT_LE_AUDIO_EVT_BASS_CP_IND: bis_info_size %d, bis_sync_state %d, metadata_len %d\r\n",
 						param->op_param.modify_source_param.bis_info_size, (unsigned int)param->op_param.modify_source_param.p_cp_bis_info[0].bis_sync_state,
 						param->op_param.modify_source_param.p_cp_bis_info[0].metadata_len);
-				BT_DUMPD(__func__, param->op_param.modify_source_param.p_cp_bis_info[0].p_metadata,
+				BT_DUMPD("", param->op_param.modify_source_param.p_cp_bis_info[0].p_metadata,
 						 param->op_param.modify_source_param.p_cp_bis_info[0].metadata_len);
 			}
 		}
@@ -1558,6 +1599,9 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 		case RTK_BT_LE_AUDIO_BASS_CP_REMOVE_SOURCE: {
 			BT_LOGA("[APP] RTK_BT_LE_AUDIO_EVT_BASS_CP_IND: conn_handle %d RTK_BT_LE_AUDIO_BASS_CP_REMOVE_SOURCE source_id %d\r\n", param->conn_handle,
 					param->op_param.remove_source_param.source_id);
+			BT_AT_PRINT("+BLEBAP:broadcast,sink,bass,remove_source,%d,%d\r\n",
+						param->conn_handle, param->op_param.remove_source_param.source_id);
+
 			p_sync_dev_info = app_bt_le_audio_sync_dev_list_find_by_source_id(param->op_param.remove_source_param.source_id);
 			if (!p_sync_dev_info) {
 				BT_LOGE("[APP] %s app_bt_le_audio_sync_dev_list_find fail\r\n", __func__);
@@ -1571,7 +1615,7 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 		case RTK_BT_LE_AUDIO_BASS_CP_SET_BROADCAST_CODE: {
 			BT_LOGA("[APP] RTK_BT_LE_AUDIO_EVT_BASS_CP_IND: conn_handle %d RTK_BT_LE_AUDIO_BASS_CP_SET_BROADCAST_CODE source_id %d\r\n", param->conn_handle,
 					param->op_param.remove_source_param.source_id);
-			BT_DUMPA(__func__, param->op_param.set_broadcast_code_param.broadcast_code, RTK_BT_LE_AUDIO_BROADCAST_CODE_LEN);
+			BT_DUMPA("", param->op_param.set_broadcast_code_param.broadcast_code, RTK_BT_LE_AUDIO_BROADCAST_CODE_LEN);
 		}
 		break;
 
@@ -1583,7 +1627,10 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 
 	case RTK_BT_LE_AUDIO_EVT_BASS_BRS_MODIFY_IND: {
 		rtk_bt_le_audio_bass_brs_modify_ind_t *param = (rtk_bt_le_audio_bass_brs_modify_ind_t *) data;
-		BT_LOGA("[APP] RTK_BT_LE_AUDIO_EVT_BASS_BRS_MODIFY_IND: sync_handle %p, source_id %d\r\n", param->sync_handle, param->source_id);
+		BT_LOGA("[APP] RTK_BT_LE_AUDIO_EVT_BASS_BRS_MODIFY_IND: sync_handle %08x, source_id %d\r\n", param->sync_handle, param->source_id);
+		BT_AT_PRINT("+BLEBAP:broadcast,sink,bass,brs_modify,%08x,%d\r\n",
+					param->sync_handle, param->source_id);
+
 		p_sync_dev_info = app_bt_le_audio_sync_dev_list_find(param->sync_handle);
 		if (!p_sync_dev_info) {
 			BT_LOGE("[APP] %s app_bt_le_audio_sync_dev_list_find fail\r\n", __func__);
@@ -1597,7 +1644,7 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 				BT_LOGD("[APP] RTK_BT_LE_AUDIO_EVT_BASS_BRS_MODIFY_IND: num_subgroups %d, bis_info_size %d, bis_sync_state 0x%x, metadata_len %d\r\n",
 						param->p_brs_data->num_subgroups, param->p_brs_data->bis_info_size, (unsigned int)param->p_brs_data->p_cp_bis_info[0].bis_sync_state,
 						param->p_brs_data->p_cp_bis_info[0].metadata_len);
-				BT_DUMPD(__func__, param->p_brs_data->p_cp_bis_info[0].p_metadata, param->p_brs_data->p_cp_bis_info[0].metadata_len);
+				BT_DUMPD("", param->p_brs_data->p_cp_bis_info[0].p_metadata, param->p_brs_data->p_cp_bis_info[0].metadata_len);
 			}
 			p_sync_dev_info->adv_sid = param->p_brs_data->source_adv_sid;
 			memcpy(&p_sync_dev_info->adv_addr, &param->p_brs_data->source_address, sizeof(rtk_bt_le_addr_t));
@@ -1607,7 +1654,7 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 	}
 	case RTK_BT_LE_AUDIO_EVT_BASS_BA_ADD_SOURCE_IND: {
 		rtk_bt_le_audio_bass_ba_add_source_ind_t *param = (rtk_bt_le_audio_bass_ba_add_source_ind_t *)data;
-		BT_LOGA("[APP] scan delegator ba add source ind: sync_handle: %p,source_id %d\r\n", param->sync_handle, param->source_id);
+		BT_LOGA("[APP] scan delegator ba add source ind: sync_handle: %08x,source_id %d\r\n", param->sync_handle, param->source_id);
 		p_sync_dev_info = app_bt_le_audio_sync_dev_list_add(param->sync_handle);
 		if (!p_sync_dev_info) {
 			BT_LOGE("[APP] %s app_bt_le_audio_sync_dev_list_add fail\r\n", __func__);
@@ -1625,7 +1672,7 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 			.past_timeout = RTK_LE_AUDIO_SYNC_TIMEOUT
 		};
 		rtk_bt_le_audio_bass_get_pa_sync_param_ind_t *param = (rtk_bt_le_audio_bass_get_pa_sync_param_ind_t *)data;
-		BT_LOGA("[APP] broadcast sink get pa sync param ind: sync_handle: %p,source_id %d,is_past: %d,pa_interval %d\r\n",
+		BT_LOGA("[APP] broadcast sink get pa sync param ind: sync_handle: %08x,source_id %d,is_past: %d,pa_interval %d\r\n",
 				param->sync_handle, param->source_id, param->is_past, param->pa_interval);
 		if (param->is_past) {
 			p_sync_dev_info = app_bt_le_audio_sync_dev_list_add(param->sync_handle);
@@ -1648,27 +1695,27 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 			.big_sync_timeout = RTK_LE_AUDIO_SYNC_TIMEOUT
 		};
 		rtk_bt_le_audio_bass_get_big_sync_param_ind_t *param = (rtk_bt_le_audio_bass_get_big_sync_param_ind_t *)data;
-		BT_LOGA("[APP] broadcast sink get big sync param ind: sync_handle: %p,source_id %d\r\n", param->sync_handle, param->source_id);
+		BT_LOGA("[APP] broadcast sink get big sync param ind: sync_handle: %08x,source_id %d\r\n", param->sync_handle, param->source_id);
 		memcpy(param->p_big_sync_param, &big_sync_param, sizeof(rtk_bt_le_audio_bass_big_sync_param_t));
 		break;
 	}
 
 	case RTK_BT_LE_AUDIO_EVT_BASS_GET_BROADCAST_CODE_IND: { //BT api shall not be called here
 		rtk_bt_le_audio_bass_get_broadcast_code_ind_t *param = (rtk_bt_le_audio_bass_get_broadcast_code_ind_t *)data;
-		BT_LOGA("[APP] broadcast sink get broadcast code ind: sync_handle: %p,source_id %d\r\n", param->sync_handle, param->source_id);
+		BT_LOGA("[APP] broadcast sink get broadcast code ind: sync_handle: %08x,source_id %d\r\n", param->sync_handle, param->source_id);
 		p_sync_dev_info = app_bt_le_audio_sync_dev_list_find(param->sync_handle);
 		if (!p_sync_dev_info) {
 			BT_LOGE("[APP] %s app_bt_le_audio_sync_dev_list_find fail\r\n", __func__);
 			break;
 		}
-		BT_DUMPD(__func__, p_sync_dev_info->broadcast_code, RTK_BT_LE_AUDIO_BROADCAST_CODE_LEN);
+		BT_DUMPD("", p_sync_dev_info->broadcast_code, RTK_BT_LE_AUDIO_BROADCAST_CODE_LEN);
 		memcpy(param->p_broadcast_code, p_sync_dev_info->broadcast_code, RTK_BT_LE_AUDIO_BROADCAST_CODE_LEN);
 		break;
 	}
 
 	case RTK_BT_LE_AUDIO_EVT_BASS_GET_PREFER_BIS_SYNC_IND: { //BT api shall not be called here
 		rtk_bt_le_audio_bass_get_prefer_bis_sync_ind_t *param = (rtk_bt_le_audio_bass_get_prefer_bis_sync_ind_t *)data;
-		BT_LOGA("[APP] broadcast sink set prefer bis sync ind: sync_handle: %p,source_id %d\r\n",
+		BT_LOGA("[APP] broadcast sink set prefer bis sync ind: sync_handle: %08x,source_id %d\r\n",
 				param->sync_handle, param->source_id);
 		p_sync_dev_info = app_bt_le_audio_sync_dev_list_find(param->sync_handle);
 		if (p_sync_dev_info) {
@@ -1707,13 +1754,16 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 			}
 			app_bt_le_audio_new_device_add_in_group(param->conn_handle, &g_pbp_bro_assi_info.group_handle);
 		}
-		printf("[APP] Discovery done for conn_handle %d\r\n", param->conn_handle);
+		BT_LOGA("[APP] Discovery done for conn_handle %d\r\n", param->conn_handle);
 		break;
 	}
 	case RTK_BT_LE_AUDIO_EVT_BASS_CLIENT_BRS_DATA_IND: {
 		rtk_bt_le_audio_bass_client_brs_data_ind_t *param = (rtk_bt_le_audio_bass_client_brs_data_ind_t *) data;
 		BT_LOGA("[APP] RTK_BT_LE_AUDIO_EVT_BASS_CLIENT_BRS_DATA_IND: conn_handle 0x%x, notify %d, read_cause 0x%x, char_instance_id %d\r\n",
 				param->conn_handle, param->notify, param->read_cause, param->char_instance_id);
+		BT_AT_PRINT("+BLEBAP:broadcast,assistant,reception_stop,0x%x,%d,0x%x,%d\r\n",
+					param->conn_handle, param->notify, param->read_cause, param->char_instance_id);
+
 		if (param->p_brs_data && param->p_brs_data->brs_is_used) {
 			BT_LOGD("[APP] RTK_BT_LE_AUDIO_EVT_BASS_CLIENT_BRS_DATA_IND: source_id %d, source_adv_sid %d, pa_sync_state %d, big_encryption %d\r\n",
 					param->p_brs_data->source_id, param->p_brs_data->source_adv_sid, param->p_brs_data->pa_sync_state, param->p_brs_data->big_encryption);
@@ -1721,7 +1771,7 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 				BT_LOGD("[APP] RTK_BT_LE_AUDIO_EVT_BASS_CLIENT_BRS_DATA_IND: num_subgroups %d, bis_info_size %d, bis_sync_state 0x%x, metadata_len %d\r\n",
 						param->p_brs_data->num_subgroups, param->p_brs_data->bis_info_size, (unsigned int)param->p_brs_data->p_cp_bis_info[0].bis_sync_state,
 						param->p_brs_data->p_cp_bis_info[0].metadata_len);
-				BT_DUMPD(__func__, param->p_brs_data->p_cp_bis_info[0].p_metadata, param->p_brs_data->p_cp_bis_info[0].metadata_len);
+				BT_DUMPD("", param->p_brs_data->p_cp_bis_info[0].p_metadata, param->p_brs_data->p_cp_bis_info[0].metadata_len);
 			}
 		}
 		p_device_info = app_bt_le_audio_group_list_find_dev_by_conn_handle(param->conn_handle);
@@ -1743,6 +1793,9 @@ static rtk_bt_evt_cb_ret_t rtk_bt_le_audio_pbp_app_callback(uint8_t evt_code, vo
 		rtk_bt_le_audio_bass_client_sync_info_req_ind_t *param = (rtk_bt_le_audio_bass_client_sync_info_req_ind_t *) data;
 		BT_LOGA("[APP] RTK_BT_LE_AUDIO_EVT_BASS_CLIENT_SYNC_INFO_REQ_IND: conn_handle 0x%x, char_instance_id %d\r\n", param->conn_handle,
 				param->char_instance_id);
+		BT_AT_PRINT("+BLEBAP:broadcast,assistant,reception_start,0x%x,%d\r\n",
+					param->conn_handle, param->char_instance_id);
+
 		p_device_info = app_bt_le_audio_group_list_find_dev_by_conn_handle(param->conn_handle);
 		if (p_device_info && p_device_info->bass_is_found) {
 			if (param->p_brs_data) {
@@ -1795,65 +1848,65 @@ static rtk_bt_evt_cb_ret_t rtk_bt_pbp_broadcast_assistant_common_gap_app_callbac
 		rtk_bt_ecfc_conn_cmpl_ind_t *p_ind = (rtk_bt_ecfc_conn_cmpl_ind_t *)param;
 		rtk_bt_addr_to_str(p_ind->bd_type, p_ind->bd_addr, addr_str, 40);
 		if (p_ind->err) {
-			printf("[APP] ECFC connection established fail(0x%x). %s\r\n", p_ind->err, addr_str);
+			BT_LOGE("[APP] ECFC connection established fail(0x%x). %s\r\n", p_ind->err, addr_str);
 		} else {
-			printf("[APP] ECFC connection established OK. %s\r\n", addr_str);
-			printf("[APP] proto_id(%d) conn_handle(%d) remote_mtu(%d) local_mtu(%d) local_mps(%d)\r\n",
-				   p_ind->proto_id, p_ind->conn_handle, p_ind->remote_mtu, p_ind->local_mtu, p_ind->local_mps);
+			BT_LOGA("[APP] ECFC connection established OK. %s\r\n", addr_str);
+			BT_LOGA("[APP] proto_id(%d) conn_handle(%d) remote_mtu(%d) local_mtu(%d) local_mps(%d)\r\n",
+					p_ind->proto_id, p_ind->conn_handle, p_ind->remote_mtu, p_ind->local_mtu, p_ind->local_mps);
 			BT_DUMP16A("[APP] cid: ", p_ind->cid, p_ind->cid_num);
 		}
 		break;
 	}
 	case RTK_BT_GAP_EVT_ECFC_DATA_IND: {
 		rtk_bt_ecfc_data_ind_t *p_ind = (rtk_bt_ecfc_data_ind_t *)param;
-		printf("[APP] ECFC data received. proto_id(%d) conn_handle(%d) cid(%d) length(%d)\r\n",
-			   p_ind->proto_id, p_ind->conn_handle, p_ind->cid, p_ind->length);
+		BT_LOGA("[APP] ECFC data received. proto_id(%d) conn_handle(%d) cid(%d) length(%d)\r\n",
+				p_ind->proto_id, p_ind->conn_handle, p_ind->cid, p_ind->length);
 		break;
 	}
 	case RTK_BT_GAP_EVT_ECFC_CONN_REQ_IND: {
 		char addr_str[40] = {0};
 		rtk_bt_ecfc_conn_req_ind_t *p_ind = (rtk_bt_ecfc_conn_req_ind_t *)param;
 		rtk_bt_addr_to_str(p_ind->bd_type, p_ind->bd_addr, addr_str, 40);
-		printf("[APP] ECFC connection requset. %s\r\n", addr_str);
-		printf("[APP] proto_id(%d) conn_handle(%d) remote_mtu(%d) identity_id(%d)\r\n",
-			   p_ind->proto_id, p_ind->conn_handle, p_ind->remote_mtu, p_ind->identity_id);
+		BT_LOGA("[APP] ECFC connection requset. %s\r\n", addr_str);
+		BT_LOGA("[APP] proto_id(%d) conn_handle(%d) remote_mtu(%d) identity_id(%d)\r\n",
+				p_ind->proto_id, p_ind->conn_handle, p_ind->remote_mtu, p_ind->identity_id);
 		BT_DUMP16A("[APP] cid: ", p_ind->cid, p_ind->cid_num);
 		break;
 	}
 	case RTK_BT_GAP_EVT_ECFC_DISCONN_IND: {
 		rtk_bt_ecfc_disconn_ind_t *p_ind = (rtk_bt_ecfc_disconn_ind_t *)param;
-		printf("[APP] ECFC disconnect. proto_id(%d) conn_handle(%d) cid(%d) cause(0x%x)\r\n",
-			   p_ind->proto_id, p_ind->conn_handle, p_ind->cid, p_ind->cause);
+		BT_LOGA("[APP] ECFC disconnect. proto_id(%d) conn_handle(%d) cid(%d) cause(0x%x)\r\n",
+				p_ind->proto_id, p_ind->conn_handle, p_ind->cid, p_ind->cause);
 		break;
 	}
 	case RTK_BT_GAP_EVT_ECFC_RECONF_REQ_IND: { //BT api shall not be called here
 		rtk_bt_ecfc_reconf_req_ind_t *p_ind = (rtk_bt_ecfc_reconf_req_ind_t *)param;
-		printf("[APP] ECFC reconfigure requset. proto_id(%d) conn_handle(%d) remote_mtu(%d) remote_mps(%d)\r\n",
-			   p_ind->proto_id, p_ind->conn_handle, p_ind->remote_mtu, p_ind->remote_mps);
+		BT_LOGA("[APP] ECFC reconfigure requset. proto_id(%d) conn_handle(%d) remote_mtu(%d) remote_mps(%d)\r\n",
+				p_ind->proto_id, p_ind->conn_handle, p_ind->remote_mtu, p_ind->remote_mps);
 		BT_DUMP16A("[APP] cid: ", p_ind->cid, p_ind->cid_num);
 		if (p_ind->remote_mtu < RTK_BT_GAP_ECFC_MIN_MTU || p_ind->remote_mps < RTK_BT_GAP_ECFC_MIN_MPS) {
 			ret = RTK_BT_EVT_CB_REJECT;
-			printf("[APP] Reject!\r\n");
+			BT_LOGE("[APP] Reject!\r\n");
 		} else {
 			ret = RTK_BT_EVT_CB_OK;
-			printf("[APP] Accept!\r\n");
+			BT_LOGA("[APP] Accept!\r\n");
 		}
 		break;
 	}
 	case RTK_BT_GAP_EVT_ECFC_RECONF_RSP_IND: {
 		rtk_bt_ecfc_reconf_rsp_ind_t *p_ind = (rtk_bt_ecfc_reconf_rsp_ind_t *)param;
 		if (p_ind->cause) {
-			printf("[APP] ECFC reconfigure fail\r\n");
+			BT_LOGE("[APP] ECFC reconfigure fail\r\n");
 		} else {
-			printf("[APP] ECFC reconfigure OK, local_mtu(%d) local mps(%d)\r\n",
-				   p_ind->local_mtu, p_ind->local_mps);
+			BT_LOGA("[APP] ECFC reconfigure OK, local_mtu(%d) local mps(%d)\r\n",
+					p_ind->local_mtu, p_ind->local_mps);
 			BT_DUMP16A("[APP] cid: ", p_ind->cid, p_ind->cid_num);
 		}
 		break;
 	}
 #endif
 	default:
-		printf("[APP] Unkown common gap cb evt type: %d\r\n", evt_code);
+		BT_LOGE("[APP] Unkown common gap cb evt type: %d\r\n", evt_code);
 		break;
 	}
 
@@ -1864,7 +1917,7 @@ int bt_pbp_main(uint8_t role, uint8_t enable)
 {
 	if (1 == enable) {
 		if (pbp_demo_init_flag) {
-			printf("%s Already init! \r\n", __func__);
+			BT_LOGE("%s Already init! \r\n", __func__);
 			return -1;
 		}
 
@@ -1945,7 +1998,7 @@ int bt_pbp_main(uint8_t role, uint8_t enable)
 			p_pbp_bsink_info->config_sink_audio_location = p_lea_app_conf->pacs_param.sink_audio_location;
 
 			//set GAP configuration
-			bt_app_conf.app_profile_support = RTK_BT_PROFILE_LEAUDIO;
+			bt_app_conf.app_profile_support = RTK_BT_PROFILE_GATTS | RTK_BT_PROFILE_LEAUDIO;
 			bt_app_conf.mtu_size = 180;
 			bt_app_conf.master_init_mtu_req = true;
 			bt_app_conf.prefer_all_phy = 0;
@@ -2048,7 +2101,7 @@ int bt_pbp_main(uint8_t role, uint8_t enable)
 		}
 	} else if (0 == enable) {
 		if (!pbp_demo_init_flag) {
-			printf("%s No need deinit! \r\n", __func__);
+			BT_LOGE("%s No need deinit! \r\n", __func__);
 			return -1;
 		}
 

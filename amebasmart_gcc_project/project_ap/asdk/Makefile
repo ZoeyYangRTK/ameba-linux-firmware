@@ -34,11 +34,7 @@ else
         Q:=@
 	ECHO:=@echo
 endif
-ifeq (${V},3)
-DAILY_BUILD = 1
-else
-DAILY_BUILD = 0
-endif
+DAILY_BUILD = ${V}
 export ABS_ROOTDIR MAKE_INCLUDE_GEN HOSTCC Q ECHO
 
 
@@ -70,8 +66,7 @@ LINK_APP_LIB =
 LINK_THIRD_APP_LIB =
 .PHONY: all build_target_folder menuconfig clean build_libraries make_wifi_lib
 
-APP_LIB = $(APP_LIB_DIR)/lib_wps.a \
-	$(APP_LIB_DIR)/lib_httpc.a \
+APP_LIB = $(APP_LIB_DIR)/lib_httpc.a \
 	$(APP_LIB_DIR)/lib_httpd.a \
 	$(APP_LIB_DIR)/lib_websocket.a \
 	$(APP_LIB_DIR)/lib_ipnat.a \
@@ -101,10 +96,21 @@ endif
 ifeq ($(findstring y, $(CONFIG_USB_HOST_EN)), y)
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_usbh.a
 endif
+ifeq ($(findstring y, $(CONFIG_USB_DRD_EN)), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_usb.a
+endif
+ifeq ($(CONFIG_MP_SHRINK), y)
+ifeq ($(CONFIG_CORE_NUM),1)
+LINK_APP_LIB += $(ROOTDIR)/lib/soc/lib_freertos_smp_sc_mp.a
+else
+LINK_APP_LIB += $(ROOTDIR)/lib/soc/lib_freertos_smp_mp.a
+endif
+else
 ifeq ($(CONFIG_CORE_NUM),1)
 LINK_APP_LIB += $(ROOTDIR)/lib/soc/lib_freertos_smp_sc.a
 else
 LINK_APP_LIB += $(ROOTDIR)/lib/soc/lib_freertos_smp.a
+endif
 endif
 LINK_APP_LIB += $(ROOTDIR)/lib/soc/lib_chipinfo.a
 LINK_APP_LIB += $(ROOTDIR)/lib/soc/lib_pmc.a
@@ -137,6 +143,13 @@ LINK_THIRD_APP_LIB += $(APP_LIB_DIR)/lib_vorbisdec.a
 endif
 endif
 
+ifeq ($(CONFIG_SPEEX_LIB),y)
+LINK_THIRD_APP_LIB += $(APP_LIB_DIR)/lib_speexdsp.a
+endif
+ifeq ($(CONFIG_OPUS_LIB),y)
+LINK_THIRD_APP_LIB += $(APP_LIB_DIR)/lib_opus.a
+endif
+
 ifeq ($(CONFIG_AUDIO_MIXER),y)
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_audio_mixer.a
 else ifeq ($(CONFIG_AUDIO_PASSTHROUGH),y)
@@ -151,7 +164,6 @@ LINK_APP_LIB += $(APP_LIB_DIR)/lib_ui_drivers.a
 endif
 
 ifeq ($(CONFIG_AUDIO_FWK),y)
-LINK_APP_LIB += $(APP_LIB_DIR)/lib_audio_hal.a
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_base.a
 endif
 
@@ -160,8 +172,10 @@ LINK_APP_LIB += $(APP_LIB_DIR)/lib_rpc.a
 endif
 
 ifeq ($(CONFIG_BT), y)
+ifneq ($(CONFIG_BT_INIC), y)
 ifeq ($(CONFIG_BT_AUDIO_CODEC_SUPPORT), y)
 LINK_THIRD_APP_LIB += $(APP_LIB_DIR)/lib_btcodec.a
+LINK_THIRD_APP_LIB += $(APP_LIB_DIR)/lib_btaudiosync.a
 endif
 ifneq ($(CONFIG_BT_ZEPHYR), y)
 ifeq ($(CONFIG_BT_BLE_ONLY), y)
@@ -178,16 +192,18 @@ LINK_THIRD_APP_LIB += $(BASEDIR)/component/bluetooth/rtk_stack/src/mesh/lib/ameb
 endif
 endif
 endif
+endif
 
 ifneq ($(wildcard ./$(WIFI_MAKE_DIR)/Makefile.lib.wifi),)
 include ./$(WIFI_MAKE_DIR)/Makefile.lib.wifi
 make_subdirs_lib_img2: make_wifi_lib
 endif
 
+prebuild: build_target_folder check_toolchain build_info.h
 #all: check_toolchain copy_ld_sheipa make_atf make_rtos linker_rtos gen_image
-bootloader: build_target_folder check_toolchain make_atf
-image2: build_target_folder copy_ld_img2 check_toolchain build_info.h make_subdirs linker_image2 fip_image code_analyze
-lib_image2: build_target_folder copy_ld_img2 check_toolchain build_info.h make_subdirs_lib_img2
+bootloader: prebuild make_atf
+image2: prebuild copy_ld_img2 make_subdirs linker_image2 fip_image code_analyze
+lib_image2: prebuild copy_ld_img2 make_subdirs_lib_img2
 #*****************************************************************************#
 #                      RULES TO CREATE DIRECTORY                              #
 #*****************************************************************************#
@@ -219,12 +235,12 @@ make_subdirs_lib_img2:
 
 	@+$(MAKE) -C make/usb_otg/device/lib all
 	@+$(MAKE) -C make/usb_otg/host/lib all
+	@+$(MAKE) -C make/usb_otg/drd/lib all
 
 
 ifeq ($(CONFIG_WLAN),y)
 # build AP libs
 ifeq ($(CONFIG_AS_INIC_AP), y)
-	@make -C make/wps all
 	@make -C make/network/httpc all
 	@make -C make/network/httpd all
 	@make -C make/network/websocket all
@@ -253,6 +269,7 @@ endif
 ifeq ($(CONFIG_BT), y)
 ifeq ($(CONFIG_BT_AUDIO_CODEC_SUPPORT), y)
 	@+$(MAKE) -C make/bluetooth/bt_audio/bt_codec all
+	@+$(MAKE) -C make/bluetooth/bt_audio/audio_sync all
 endif
 endif
 
@@ -332,17 +349,45 @@ fip_image:
 
 	$(Q)$(KM4_BUILDDIR)/asdk/gnu_utility/image_tool/imagetool.sh $(IMAGE_TARGET_FOLDER)/ap_image_all.bin $(BUILD_TYPE)
 
-ifeq ($(CONFIG_UPGRADE_BOOTLOADER), y)
+ifeq ($(CONFIG_FATFS_WITHIN_APP_IMG), y)
+	@if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin ] && [ -f $(BASEDIR)/amebasmart_gcc_project/fatfs.bin ]; then \
+		mv $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_tmp.bin; \
+		mv $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns_tmp.bin; \
+		sh $(UTILITYDIR)/pad.sh $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_tmp.bin 4096; \
+		sh $(UTILITYDIR)/pad.sh $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns_tmp.bin 4096; \
+		$(PREPENDTOOL) $(BASEDIR)/amebasmart_gcc_project/fatfs.bin  VFS1_FLASH_BASE_ADDR  $(AP_IMAGEDIR)/target_img2.map; \
+		cat $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_tmp.bin $(BASEDIR)/amebasmart_gcc_project/fatfs_prepend.bin > $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin; \
+		cat $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns_tmp.bin $(BASEDIR)/amebasmart_gcc_project/fatfs_prepend.bin > $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin; \
+	fi
+endif
+
+ifeq ($(CONFIG_COMPRESS_OTA_IMG), y)
 	@if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin ]; then \
-		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin $(KM4_BUILDDIR)/asdk/image/km4_boot_all.bin; \
-		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin $(KM4_BUILDDIR)/asdk/image/km4_boot_all_ns.bin; \
+		$(COMPRESSTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin; \
+		$(COMPRESSTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin; \
+		$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_compress.bin $(KM4_BUILDDIR)/asdk/image/tmp_app.bin; \
+		$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns_compress.bin $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin; \
 	fi
 else
 	@if [ -f $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin ]; then \
-		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin; \
-		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin; \
+		$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app.bin $(KM4_BUILDDIR)/asdk/image/tmp_app.bin; \
+		$(COPY) $(KM4_BUILDDIR)/asdk/image/km0_km4_ca32_app_ns.bin $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin; \
 	fi
 endif
+ifeq ($(CONFIG_UPGRADE_BOOTLOADER), y)
+	@if [ -f $(KM4_BUILDDIR)/asdk/image/tmp_app.bin ]; then \
+		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/tmp_app.bin $(KM4_BUILDDIR)/asdk/image/km4_boot_all.bin; \
+		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin $(KM4_BUILDDIR)/asdk/image/km4_boot_all_ns.bin; \
+	fi
+else
+	@if [ -f $(KM4_BUILDDIR)/asdk/image/tmp_app.bin ]; then \
+		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/tmp_app.bin; \
+		$(OTAPREPENDTOOL) $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin; \
+	fi
+endif
+	@rm -f $(KM4_BUILDDIR)/asdk/image/tmp_app.bin
+	@rm -f $(KM4_BUILDDIR)/asdk/image/tmp_app_ns.bin
+
 	@rm -f $(IMAGE_TARGET_FOLDER)/*prepend.bin
 	@$(COPY) $(IMAGE_TARGET_FOLDER)/*rom* $(ROM_LIB_DIR)
 	@$(COPY) ./build/atf/bl1/{*.dump,*.elf,*.ld,*.map} $(ROM_LIB_DIR)
@@ -350,19 +395,15 @@ endif
 	@echo "========== Image manipulating end =========="
 
 code_analyze:
-ifeq ($(DAILY_BUILD), 0)
 	@echo "========== Image analyze start =========="
 	@if [ -f $(SCRIPT_DIR)/code_analyze.py ]; then \
 		$(CODE_ANALYZE_PYTHON) $(ANALYZE_MP_IMG) $(DAILY_BUILD); \
 	fi
 	@if [ -f $(SCRIPT_DIR)/static_code_analyze.py ]; then \
-         $(STATIC_ANALYZE_PYTHON); \
+         $(STATIC_ANALYZE_PYTHON) $(DAILY_BUILD); \
 	fi
 
 	@echo "========== Image analyze end =========="
-else
-	@echo "daily build"
-endif
 #*****************************************************************************#
 #                      RULES TO BUILD COMPILER TIME                           #
 #*****************************************************************************#

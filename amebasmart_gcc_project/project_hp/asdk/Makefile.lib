@@ -30,8 +30,10 @@ LINK_APP_LIB += $(APP_LIB_DIR)/lib_cmsis_dsp.a
 endif
 
 ifeq ($(CONFIG_BT), y)
+ifneq ($(CONFIG_BT_INIC), y)
 ifeq ($(CONFIG_BT_AUDIO_CODEC_SUPPORT), y)
 LINK_THIRD_APP_LIB += $(APP_LIB_DIR)/lib_btcodec.a
+LINK_THIRD_APP_LIB += $(APP_LIB_DIR)/lib_btaudiosync.a
 endif
 ifneq ($(CONFIG_BT_ZEPHYR), y)
 ifeq ($(CONFIG_BT_BLE_ONLY), y)
@@ -48,10 +50,10 @@ LINK_THIRD_APP_LIB += $(BASEDIR)/component/bluetooth/rtk_stack/src/mesh/lib/ameb
 endif
 endif
 endif
+endif
 
 
-APP_LIB = $(APP_LIB_DIR)/lib_wps.a \
-	$(APP_LIB_DIR)/lib_httpc.a \
+APP_LIB = $(APP_LIB_DIR)/lib_httpc.a \
 	$(APP_LIB_DIR)/lib_httpd.a \
 	$(APP_LIB_DIR)/lib_websocket.a \
 	#$(APP_LIB_DIR)/lib_coap.a
@@ -68,7 +70,11 @@ LINK_APP_LIB += $(APP_LIB)
 else ifeq ($(CONFIG_AS_INIC_NP), y)
 
 ifeq ($(CONFIG_MP_INCLUDED), y)
+ifeq ($(CONFIG_MP_SHRINK), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_coex_mp_shrink.a
+else
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_coex_mp.a
+endif
 else
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_coex.a
 endif
@@ -78,10 +84,11 @@ else ifeq ($(CONFIG_SINGLE_CORE_WIFI), y)
 LINK_APP_LIB += $(APP_LIB)
 
 ifeq ($(CONFIG_MP_INCLUDED), y)
-LINK_APP_LIB += $(APP_LIB_DIR)/lib_wps.a
-endif
-ifeq ($(CONFIG_MP_INCLUDED), y)
+ifeq ($(CONFIG_MP_SHRINK), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_coex_mp_shrink.a
+else
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_coex_mp.a
+endif
 else
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_coex.a
 endif
@@ -94,6 +101,9 @@ LINK_APP_LIB += $(APP_LIB_DIR)/lib_usbh.a
 endif
 ifeq ($(findstring y, $(CONFIG_USB_DEVICE_EN)), y)
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_usbd.a
+endif
+ifeq ($(findstring y, $(CONFIG_USB_DRD_EN)), y)
+LINK_APP_LIB += $(APP_LIB_DIR)/lib_usb.a
 endif
 
 #soc
@@ -134,7 +144,6 @@ ifeq ($(CONFIG_IMQ_EN),y)
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_rpc.a
 endif
 ifneq ($(CONFIG_AUDIO_RPC_AFE)$(CONFIG_AUDIO_LOCAL_AFE)$(CONFIG_AUDIO_FWK),)
-LINK_APP_LIB += $(APP_LIB_DIR)/lib_audio_hal.a
 LINK_APP_LIB += $(APP_LIB_DIR)/lib_base.a
 endif
 
@@ -166,7 +175,6 @@ ifeq ($(CONFIG_WLAN), y)
 
 # AP
 ifeq ($(CONFIG_AS_INIC_AP), y)
-	@+$(MAKE) -C make/wps all
 	@+$(MAKE) -C make/network/httpc all
 	@+$(MAKE) -C make/network/httpd all
 	@+$(MAKE) -C make/network/websocket all
@@ -179,7 +187,6 @@ else ifeq ($(CONFIG_AS_INIC_NP),y)
 	@+$(MAKE) -C make/rtk_coex all
 # Single core
 else ifeq ($(CONFIG_SINGLE_CORE_WIFI),y)
-	@+$(MAKE) -C make/wps all
 	@+$(MAKE) -C make/network/httpc all
 	@+$(MAKE) -C make/network/httpd all
 	@+$(MAKE) -C make/network/websocket all
@@ -213,10 +220,12 @@ ifeq ($(CONFIG_AUDIO_EN),y)
 endif
 	@+$(MAKE) -C make/usb_otg/device/lib all
 	@+$(MAKE) -C make/usb_otg/host/lib all
+	@+$(MAKE) -C make/usb_otg/drd/lib all
 
 ifeq ($(CONFIG_BT), y)
 ifeq ($(CONFIG_BT_AUDIO_CODEC_SUPPORT), y)
 	@+$(MAKE) -C make/bluetooth/bt_audio/bt_codec all
+	@+$(MAKE) -C make/bluetooth/bt_audio/audio_sync all
 endif
 endif
 # build audio libs

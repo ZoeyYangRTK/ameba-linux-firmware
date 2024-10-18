@@ -104,11 +104,11 @@ fi
 
 CURR_PATH=$(dirname $IMAGE2_FILENAME)
 #IMAGE_FILENAME_PREPEND="${IMAGE2_FILENAME%.*}"'_prepend.'"${IMAGE2_FILENAME##*.}"
-IMAGE_FILENAME_PREPEND=$CURR_PATH/OTA_All.bin
+IMAGE_FILENAME_PREPEND=$CURR_PATH/ota_all.bin
 IMAGE_FILENAME_NEW=$(basename $IMAGE2_FILENAME)
 
-if [ "$IMAGE_FILENAME_NEW" == "km0_km4_ca32_app_ns.bin" ]; then
-	IMAGE_FILENAME_PREPEND=$CURR_PATH/OTA_All_ns.bin
+if [ "$IMAGE_FILENAME_NEW" == "tmp_app_ns.bin" ]; then
+	IMAGE_FILENAME_PREPEND=$CURR_PATH/ota_all_ns.bin
 fi
 
 HEADER_FINAL=''
@@ -139,7 +139,7 @@ fi
 IMAGE_ID=1
 let OFFSET=$OFFSET+$IMAGE_LEN_1
 
-if [ "$IMAGE_FILENAME_NEW" == "km0_km4_ca32_app.bin" ] || [ "$IMAGE_FILENAME_NEW" == "km0_km4_ca32_app_ns.bin" ]; then
+if [ "$IMAGE_FILENAME_NEW" == "tmp_app.bin" ] || [ "$IMAGE_FILENAME_NEW" == "tmp_app_ns.bin" ]; then
     MakeFixedWidthHeaderString $OTA_SIGN   8  HEADER_FINAL 0
     MakeFixedWidthHeaderString $HEADER_LEN   8  HEADER_FINAL 1
     MakeFixedWidthHeaderString $CHECKSUM    8  HEADER_FINAL 1

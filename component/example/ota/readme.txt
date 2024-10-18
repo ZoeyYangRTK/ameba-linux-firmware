@@ -1,6 +1,6 @@
 ##################################################################################
 #                                                                                #
-#                      OTA UPDATING EXAMPLE                                 #
+#                      OTA UPDATING EXAMPLE                                 	 #
 #                                                                                #
 ##################################################################################
 
@@ -50,7 +50,7 @@ Parameter Setting and Configuration
 		6. For sdcard update, only AmebaSmart support.
 			(1) users only need to set resource.
 			#define RESOURCE    "OTA_ALL.bin" // binary file path in the sdcard.
-			(2) in component\file_system\vfs\vfs_fatfs.h
+			(2) Add this line in component\file_system\vfs\vfs_fatfs.h
 			#define FATFS_DISK_SD 	 1
 			(3) in component\file_system\fatfs\r0.14b\include\ffconf.h
 			#define FF_LFN_UNICODE    2
@@ -60,6 +60,11 @@ Parameter Setting and Configuration
 				//	ota_printf(_OTA_INFO_, "Wait for WIFI connection ...\n");
 				//	rtos_time_delay_ms(1000);
 				//}
+			(6) Type command "make menuconfig" and choose "CONFIG VFS"
+				For VFS_FATFS with VFS_INF_SD: (Only AmebaSmart support)
+				[ ] Enable VFS LITTLEFS
+				[*] Enable VFS FATFS
+				(SD) FATFS Memory Type
 		
         7. For http or https update, modify PORT, HOST and RESOURCE based on your download server.
         eg: SERVER: http://m-apps.oss-cn-shenzhen.aliyuncs.com/051103061600.bin

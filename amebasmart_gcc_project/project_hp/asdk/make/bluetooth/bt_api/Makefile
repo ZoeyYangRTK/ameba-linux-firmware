@@ -36,7 +36,6 @@ CSRC += \
 	$(BT_API_DIR)/rtk_bt_gap.c \
 	$(BT_API_DIR)/rtk_bt_gatt.c \
 	$(BT_API_DIR)/rtk_bt_vendor.c \
-	$(BT_API_DIR)/rtk_bt_mp_api.c \
 	$(BT_API_DIR)/rtk_bt_power_control.c \
 	$(BT_API_DIR)/rtk_bt_br_gap.c \
 	$(BT_API_DIR)/rtk_bt_avrcp.c \
@@ -45,6 +44,7 @@ CSRC += \
 	$(BT_API_DIR)/rtk_bt_spp.c \
 	$(BT_API_DIR)/rtk_bt_hid.c \
 	$(BT_API_DIR)/rtk_bt_hfp.c \
+	$(BT_API_DIR)/rtk_bt_pbap.c \
 	$(BT_API_DIR)/rtk_bt_mesh_common.c \
 	$(BT_API_DIR)/rtk_bt_mesh_config_client_model.c \
 	$(BT_API_DIR)/rtk_bt_mesh_datatrans_model.c \
@@ -107,6 +107,7 @@ CSRC += \
 	$(BT_API_DIR)/rtk_stack/rtk_stack_spp.c \
 	$(BT_API_DIR)/rtk_stack/rtk_stack_hid.c \
 	$(BT_API_DIR)/rtk_stack/rtk_stack_hfp.c \
+	$(BT_API_DIR)/rtk_stack/rtk_stack_pbap.c \
 	$(BT_API_DIR)/rtk_stack/rtk_stack_mesh_common.c \
 	$(BT_API_DIR)/rtk_stack/rtk_stack_mesh_config_client_model.c \
 	$(BT_API_DIR)/rtk_stack/rtk_stack_mesh_datatrans_model.c \

@@ -9,7 +9,7 @@
 #include <osif.h>
 
 #include "platform_autoconf.h"
-#include <log_service.h>
+#include <atcmd_service.h>
 #include <bt_utils.h>
 #include <rtk_bt_def.h>
 #include <rtk_bt_common.h>
@@ -28,7 +28,7 @@ static int atcmd_bt_gattc_exchange_mtu(int argc, char **argv)
 	(void)argc;
 #if defined(RTK_BLE_MGR_LIB) && RTK_BLE_MGR_LIB
 	(void)argv;
-	AT_PRINTK("[ATBC] GATTC exchange MTU is not support!");
+	BT_LOGE("GATTC exchange MTU is not support!\r\n");
 	return -1;
 #else
 	uint16_t ret = 0;
@@ -37,7 +37,7 @@ static int atcmd_bt_gattc_exchange_mtu(int argc, char **argv)
 	conn_handle = (uint16_t)str_to_int(argv[0]);
 	ret = rtk_bt_gattc_exchange_mtu(conn_handle);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] GATTC exchange MTU failed! err:0x%x", ret);
+		BT_LOGE("GATTC exchange MTU failed! err:0x%x\r\n", ret);
 		return -1;
 	}
 
@@ -51,14 +51,14 @@ static int atcmd_bt_gattc_discover(int argc, char **argv)
 	(void)argc;
 	uint16_t ret = 0;
 
-	AT_PRINTK("[ATBC] GATT Client based on ble_mgr\r\n");
+	BT_LOGA("GATT Client based on ble_mgr\r\n");
 
 	ret = rtk_bt_gattc_discover_all(str_to_int(argv[0]));
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] GATTC Discover failed! err: 0x%x", ret);
+		BT_LOGE("GATTC Discover failed! err: 0x%x\r\n", ret);
 		return -1;
 	} else {
-		AT_PRINTK("[ATBC] GATTC Discovering ...");
+		BT_LOGA("GATTC Discovering ...\r\n");
 	}
 
 	return 0;
@@ -68,9 +68,9 @@ static int atcmd_bt_gattc_discover(int argc, char **argv)
 	rtk_bt_gattc_discover_param_t disc_param = {0};
 	disc_param.profile_id = GCS_CLIENT_PROFILE_ID;
 
-	AT_PRINTK("[ATBC] GATT Client based on common API\r\n");
+	BT_LOGA("GATT Client based on common API\r\n");
 	if (argc < 2) {
-		AT_PRINTK("%s, wrong args num: %d", __func__, argc);
+		BT_LOGE("%s, wrong args num: %d\r\n", __func__, argc);
 		return -1;
 	}
 
@@ -94,7 +94,7 @@ static int atcmd_bt_gattc_discover(int argc, char **argv)
 			disc_param.disc_primary_by_uuid.uuid_type = BT_UUID_TYPE_128;
 			hexnum_str_to_array(argv[2], (uint8_t *)disc_param.disc_primary_by_uuid.uuid, 16);
 		} else {
-			AT_PRINTK("[ATBC] GATTC Discover failed, wrong uuid!");
+			BT_LOGE("GATTC Discover failed, wrong uuid!\r\n");
 			return -1;
 		}
 		break;
@@ -125,7 +125,7 @@ static int atcmd_bt_gattc_discover(int argc, char **argv)
 			disc_param.disc_char_by_uuid.uuid_type = BT_UUID_TYPE_128;
 			hexnum_str_to_array(argv[4], (uint8_t *)disc_param.disc_char_by_uuid.uuid, 16);
 		} else {
-			AT_PRINTK("[ATBC] GATTC Discover failed, wrong uuid!");
+			BT_LOGE("GATTC Discover failed, wrong uuid!\r\n");
 			return -1;
 		}
 		break;
@@ -137,24 +137,24 @@ static int atcmd_bt_gattc_discover(int argc, char **argv)
 		disc_param.disc_descriptor.end_handle = str_to_int(argv[3]);
 		break;
 	default:
-		AT_PRINTK("[ATBC] GATTC Discover failed, wrong type: %d!", disc_param.type);
+		BT_LOGE("GATTC Discover failed, wrong type: %d!\r\n", disc_param.type);
 		return -1;
 		break;
 	}
 
 	ret = rtk_bt_gattc_discover(&disc_param);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] GATTC Discover failed! err: 0x%x", ret);
+		BT_LOGE("GATTC Discover failed! err: 0x%x\r\n", ret);
 		return -1;
 	} else {
-		AT_PRINTK("[ATBC] GATTC Discovering ...");
+		BT_LOGA("GATTC Discovering ...\r\n");
 	}
 
 
 	return 0;
 
 WRONG_ARG_NUM:
-	AT_PRINTK("[ATBC] GATTC Discover failed: type (%d) with wrong args number!", disc_param.type);
+	BT_LOGE("GATTC Discover failed: type (%d) with wrong args number!\r\n", disc_param.type);
 	return -1;
 #endif
 }
@@ -196,14 +196,14 @@ static int atcmd_bt_gattc_read(int argc, char **argv)
 			read_param.by_uuid.uuid_type = BT_UUID_TYPE_128;
 			hexnum_str_to_array(argv[4], (uint8_t *)read_param.by_uuid.uuid, 16);
 		} else {
-			AT_PRINTK("[ATBC] GATTC Read failed, wrong uuid!");
+			BT_LOGE("GATTC Read failed, wrong uuid!\r\n");
 			return -1;
 		}
 #endif
 		break;
 #if !defined(RTK_BLE_MGR_LIB) || !RTK_BLE_MGR_LIB
 	case 2:
-		AT_PRINTK("[ATBC] GATTC Read_multiple not supported temporarily!");
+		BT_LOGE("GATTC Read_multiple not supported temporarily!\r\n");
 		return -1;
 	case 3:
 		if (argc < 4) {
@@ -219,22 +219,22 @@ static int atcmd_bt_gattc_read(int argc, char **argv)
 		break;
 #endif
 	default:
-		AT_PRINTK("[ATBC] GATTC Read failed, wrong type: %d!", read_param.type);
+		BT_LOGE("GATTC Read failed, wrong type: %d!\r\n", read_param.type);
 		return -1;
 		break;
 	}
 
 	ret = rtk_bt_gattc_read(&read_param);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] GATTC Read failed! err:0x%x", ret);
+		BT_LOGE("GATTC Read failed! err:0x%x\r\n", ret);
 		return -1;
 	}
 
-	AT_PRINTK("[ATBC] GATTC Reading ...");
+	BT_LOGA("GATTC Reading ...\r\n");
 	return 0;
 
 WRONG_ARG_NUM:
-	AT_PRINTK("[ATBC] GATTC Read failed: type (%d) with wrong args number!", read_param.type);
+	BT_LOGE("GATTC Read failed: type (%d) with wrong args number!\r\n", read_param.type);
 	return -1;
 }
 
@@ -255,7 +255,7 @@ static int atcmd_bt_gattc_write(int argc, char **argv)
 	}
 	write_param.data = (void *)osif_mem_alloc(RAM_TYPE_DATA_ON, write_param.length);
 	if (!write_param.data) {
-		AT_PRINTK("[ATBC] GATTC Write failed: cant alloc memory");
+		BT_LOGE("GATTC Write failed: cant alloc memory\r\n");
 		return -1;
 	}
 
@@ -264,16 +264,16 @@ static int atcmd_bt_gattc_write(int argc, char **argv)
 	ret = rtk_bt_gattc_write(&write_param);
 	if (RTK_BT_OK != ret) {
 		osif_mem_free((void *)write_param.data);
-		AT_PRINTK("[ATBC] GATTC Write failed! err: 0x%x", ret);
+		BT_LOGE("GATTC Write failed! err: 0x%x\r\n", ret);
 		return -1;
 	}
 
 	osif_mem_free((void *)write_param.data);
-	AT_PRINTK("[ATBC] GATTC Writing ...");
+	BT_LOGA("GATTC Writing ...\r\n");
 	return 0;
 
 WRONG_ARG_LEN:
-	AT_PRINTK("[ATBC] GATTC Write failed: wrong args length!");
+	BT_LOGE("GATTC Write failed: wrong args length!\r\n");
 	return -1;
 }
 
@@ -303,10 +303,10 @@ static int atcmd_bt_gattc_enable_cccd(int argc, char **argv)
 
 	ret = rtk_bt_gattc_enable_notify_or_indicate(&en_cccd);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] GATTC enable cccd failed! err: 0x%x", ret);
+		BT_LOGE("GATTC enable cccd failed! err: 0x%x\r\n", ret);
 		return -1;
 	} else {
-		AT_PRINTK("[ATBC] GATTC enable cccd going ...");
+		BT_LOGA("GATTC enable cccd going ...\r\n");
 	}
 
 	return 0;
@@ -337,10 +337,10 @@ static int atcmd_bt_gattc_disable_cccd(int argc, char **argv)
 	dis_cccd.bindicate = cccd_bit & (1 << 1);
 	ret = rtk_bt_gattc_disable_notify_or_indicate(&dis_cccd);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] GATTC disable cccd failed! err: 0x%x", ret);
+		BT_LOGE("GATTC disable cccd failed! err: 0x%x\r\n", ret);
 		return -1;
 	} else {
-		AT_PRINTK("[ATBC] GATTC disable cccd going ...");
+		BT_LOGA("GATTC disable cccd going ...\r\n");
 	}
 
 	return 0;
@@ -349,6 +349,81 @@ static int atcmd_bt_gattc_disable_cccd(int argc, char **argv)
 
 #if (defined(CONFIG_BT_CENTRAL) && CONFIG_BT_CENTRAL) || \
     (defined(CONFIG_BT_SCATTERNET) && CONFIG_BT_SCATTERNET)
+/**************************** GATTC client loop send related *****************************/
+struct gattc_tx_loop_param {
+	uint16_t conn_handle;
+	uint16_t interval;
+	uint32_t tx_count;
+};
+static struct gattc_tx_loop_param gattc_tx = {0};
+static uint8_t gattc_write_data[] = "GATTC loop test data";
+
+static uint8_t gattc_loop_send_task_running = 0;
+static void gattc_loop_send_task_entry(void *ctx)
+{
+	struct gattc_tx_loop_param *param = (struct gattc_tx_loop_param *)ctx;
+	uint32_t cnt = 0;
+	uint16_t ret = 0;
+
+	while (true) {
+		ret = simple_ble_client_write_charac_v1(param->conn_handle,
+												gattc_write_data,
+												sizeof(gattc_write_data));
+		if (RTK_BT_OK != ret) {
+			BT_LOGE("GATTC loop send write failed! err: 0x%x\r\n", ret);
+		}
+		if (!gattc_loop_send_task_running) {
+			break;
+		}
+		cnt++;
+		if (param->tx_count && cnt >= param->tx_count) {
+			break;
+		}
+		osif_delay(param->interval);
+	}
+
+	gattc_loop_send_task_running = 2;
+	osif_task_delete(NULL);
+}
+
+static int atcmd_bt_gattc_loop_send(int argc, char **argv)
+{
+	void *handle;
+	uint8_t enable;
+
+	enable = str_to_int(argv[0]);
+
+	if (enable) {
+		gattc_tx.conn_handle = str_to_int(argv[1]);
+		gattc_tx.interval = str_to_int(argv[2]);
+		if (argc >= 4) {
+			gattc_tx.tx_count = str_to_int(argv[3]);
+		} else {
+			gattc_tx.tx_count = 0;
+		}
+
+		gattc_loop_send_task_running = 1;
+		if (false == osif_task_create(&handle, "gattc_loop_send_task",
+									  gattc_loop_send_task_entry, (void *)(&gattc_tx),
+									  1024, 2)) {
+			gattc_loop_send_task_running = 0;
+			BT_LOGE("GATTC loop send task create failed\r\n");
+			return -1;
+		}
+	} else {
+		if (gattc_loop_send_task_running == 1) {
+			gattc_loop_send_task_running = 0;
+			while (!gattc_loop_send_task_running) {
+				osif_delay(100);
+			}
+		}
+		gattc_loop_send_task_running = 0;
+	}
+
+	BT_LOGA("loop send %s.\r\n", enable ? "start" : "stop");
+	return 0 ;
+}
+
 /**************************** BAS client related *****************************/
 #if !defined(RTK_BLE_MGR_LIB) || !RTK_BLE_MGR_LIB
 static int atcmd_bas_client_srv_discover(int argc, char **argv)
@@ -360,11 +435,11 @@ static int atcmd_bas_client_srv_discover(int argc, char **argv)
 	conn_handle = str_to_int(argv[0]);
 	ret = bas_client_srv_discover(conn_handle);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] BAS client discover failed! err: 0x%x", ret);
+		BT_LOGE("BAS client discover failed! err: 0x%x\r\n", ret);
 		return -1;
 	}
 
-	AT_PRINTK("[ATBC] BAS client discovering ...");
+	BT_LOGA("BAS client discovering ...\r\n");
 	return 0;
 }
 #endif
@@ -378,11 +453,11 @@ static int atcmd_bas_client_read_battery_level(int argc, char **argv)
 	conn_handle = str_to_int(argv[0]);
 	ret = bas_client_read_battery_level(conn_handle);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] BAS client read battery level failed! err: 0x%x", ret);
+		BT_LOGE("BAS client read battery level failed! err: 0x%x\r\n", ret);
 		return -1;
 	}
 
-	AT_PRINTK("[ATBC] BAS client reading battery level ...");
+	BT_LOGA("BAS client reading battery level ...\r\n");
 	return 0;
 }
 
@@ -397,11 +472,11 @@ static int atcmd_bas_client_set_notify(int argc, char **argv)
 	enable = (str_to_int(argv[1]) ? true : false);
 	ret = bas_client_set_notify(conn_handle, enable);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] BAS client battery level set notify failed! err: 0x%x", ret);
+		BT_LOGE("BAS client battery level set notify failed! err: 0x%x\r\n", ret);
 		return -1;
 	}
 
-	AT_PRINTK("[ATBC] BAS client setting battery notify ...");
+	BT_LOGA("BAS client setting battery notify ...\r\n");
 	return 0;
 }
 
@@ -416,11 +491,11 @@ static int atcmd_gaps_client_srv_discover(int argc, char **argv)
 	conn_handle = str_to_int(argv[0]);
 	ret = gaps_client_srv_discover(conn_handle);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] GAPS client discover failed! err: 0x%x", ret);
+		BT_LOGE("GAPS client discover failed! err: 0x%x\r\n", ret);
 		return -1;
 	}
 
-	AT_PRINTK("[ATBC] GAPS client discovering ...");
+	BT_LOGA("GAPS client discovering ...\r\n");
 	return 0;
 }
 #endif
@@ -436,11 +511,11 @@ static int atcmd_gaps_client_read_char(int argc, char **argv)
 	char_index = str_to_int(argv[1]);
 	ret = gaps_client_char_read(conn_handle, char_index);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] GAPS client read charac failed! err: 0x%x", ret);
+		BT_LOGE("GAPS client read charac failed! err: 0x%x\r\n", ret);
 		return -1;
 	}
 
-	AT_PRINTK("[ATBC] GAPS client reading charac ...");
+	BT_LOGA("GAPS client reading charac ...\r\n");
 	return 0;
 }
 
@@ -455,11 +530,11 @@ static int atcmd_simple_ble_client_srv_discover(int argc, char **argv)
 	conn_handle = str_to_int(argv[0]);
 	ret = simple_ble_client_srv_discover(conn_handle);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] Simple ble client discover failed! err: 0x%x", ret);
+		BT_LOGE("Simple ble client discover failed! err: 0x%x\r\n", ret);
 		return -1;
 	}
 
-	AT_PRINTK("[ATBC] Simple ble client discovering ...");
+	BT_LOGA("Simple ble client discovering ...\r\n");
 	return 0;
 }
 #endif
@@ -473,11 +548,11 @@ static int atcmd_simple_ble_client_read_charac_v0(int argc, char **argv)
 	conn_handle = str_to_int(argv[0]);
 	ret = simple_ble_client_read_charac_v0(conn_handle);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] Simple ble client read charac v0 failed! err: 0x%x", ret);
+		BT_LOGE("Simple ble client read charac v0 failed! err: 0x%x\r\n", ret);
 		return -1;
 	}
 
-	AT_PRINTK("[ATBC] Simple ble client reading charac v0 ...");
+	BT_LOGA("Simple ble client reading charac v0 ...\r\n");
 	return 0;
 }
 
@@ -495,13 +570,13 @@ static int atcmd_simple_ble_client_write_charac_v1(int argc, char **argv)
 
 	ret = simple_ble_client_write_charac_v1(conn_handle, data, data_len);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] Simple ble client write charac v1 failed! err: 0x%x", ret);
+		BT_LOGE("Simple ble client write charac v1 failed! err: 0x%x\r\n", ret);
 		osif_mem_free(data);
 		return -1;
 	}
 
 	osif_mem_free(data);
-	AT_PRINTK("[ATBC] Simple ble client writing charac v1 ...");
+	BT_LOGA("Simple ble client writing charac v1 ...\r\n");
 	return 0;
 
 }
@@ -517,11 +592,11 @@ static int atcmd_simple_ble_client_set_notify_charac_v2(int argc, char **argv)
 	enable = (str_to_int(argv[1]) ? true : false);
 	ret = simple_ble_client_set_notify_charac_v2(conn_handle, enable);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] Simple ble client set charac v2 notify failed! err: 0x%x", ret);
+		BT_LOGE("Simple ble client set charac v2 notify failed! err: 0x%x\r\n", ret);
 		return -1;
 	}
 
-	AT_PRINTK("[ATBC] Simple ble client setting charac v2 notify ...");
+	BT_LOGA("Simple ble client setting charac v2 notify ...\r\n");
 	return 0;
 }
 
@@ -536,11 +611,11 @@ static int atcmd_simple_ble_client_set_indicate_charac_v3(int argc, char **argv)
 	enable = (str_to_int(argv[1]) ? true : false);
 	ret = simple_ble_client_set_indicate_charac_v3(conn_handle, enable);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] Simple ble client set charac v3 indicate failed! err: 0x%x", ret);
+		BT_LOGE("Simple ble client set charac v3 indicate failed! err: 0x%x\r\n", ret);
 		return -1;
 	}
 
-	AT_PRINTK("[ATBC] Simple ble client setting charac v3 indicate ...");
+	BT_LOGA("Simple ble client setting charac v3 indicate ...\r\n");
 	return 0;
 }
 
@@ -555,11 +630,11 @@ static int atcmd_cte_client_srv_discover(int argc, char **argv)
 	conn_handle = str_to_int(argv[0]);
 	ret = cte_client_srv_discover(conn_handle);
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] CTE client discover failed! err: 0x%x", ret);
+		BT_LOGE("CTE client discover failed! err: 0x%x\r\n", ret);
 		return -1;
 	}
 
-	AT_PRINTK("[ATBC] CTE client discovering ...");
+	BT_LOGA("CTE client discovering ...\r\n");
 	return 0;
 }
 #endif  /* RTK_BLE_MGR_LIB  */
@@ -569,25 +644,22 @@ static int atcmd_cte_client_write_charac(int argc, char **argv)
 	(void)argc;
 	uint16_t ret = 0;
 	uint16_t conn_handle = 0;
-	uint16_t data_len = 0;
-	void *data;
+	uint16_t len = 0;
+	int value;
 	cte_charac_index_e char_idx;
 
 	conn_handle = str_to_int(argv[0]);
 	char_idx = str_to_int(argv[1]);
-	data_len = str_to_int(argv[2]);
-	data = (void *)osif_mem_alloc(RAM_TYPE_DATA_ON, data_len);
-	hexdata_str_to_array(argv[3], (uint8_t *)data, data_len);
+	len = str_to_int(argv[2]);
+	value = str_to_int(argv[3]);
 
-	ret = cte_client_write_charac(conn_handle, char_idx, data_len, data);
+	ret = cte_client_write_charac(conn_handle, char_idx, len, (uint8_t *)(&value));
 	if (RTK_BT_OK != ret) {
-		AT_PRINTK("[ATBC] CTE client write characteristic index %u failed! err: 0x%x", ret, char_idx);
-		osif_mem_free(data);
+		BT_LOGE("CTE client write characteristic index %u failed! err: 0x%x\r\n", ret, char_idx);
 		return -1;
 	}
 
-	osif_mem_free(data);
-	AT_PRINTK("[ATBC] CTE client writing characteristic index %u ...", char_idx);
+	BT_LOGA("CTE client writing characteristic index %u ...\r\n", char_idx);
 	return 0;
 }
 #endif/* RTK_BLE_5_1_CTE_SUPPORT  */
@@ -601,9 +673,9 @@ static const cmd_table_t gattc_cmd_table[] = {
 	{"write",   atcmd_bt_gattc_write,        6, 6},
 	{"en_cccd",    atcmd_bt_gattc_enable_cccd,    5, 5},
 	{"dis_cccd",    atcmd_bt_gattc_disable_cccd,    5, 5},
-
 #if (defined(CONFIG_BT_CENTRAL) && CONFIG_BT_CENTRAL) || \
     (defined(CONFIG_BT_SCATTERNET) && CONFIG_BT_SCATTERNET)
+	{"loop_send",  atcmd_bt_gattc_loop_send,      2, 5},
 	/* bas client related */
 #if !defined(RTK_BLE_MGR_LIB) || !RTK_BLE_MGR_LIB
 	{"bas_disc",    atcmd_bas_client_srv_discover,    2, 2},
@@ -637,6 +709,5 @@ static const cmd_table_t gattc_cmd_table[] = {
 
 int atcmd_bt_gattc(int argc, char *argv[])
 {
-	atcmd_bt_excute(argc, argv, gattc_cmd_table, "[ATBC][gattc]");
-	return 0;
+	return atcmd_bt_excute(argc, argv, gattc_cmd_table, "[AT+BLEGATTC]");
 }
