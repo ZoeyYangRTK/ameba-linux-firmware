@@ -305,6 +305,7 @@ typedef struct {
  * @brief     Bluetooth HFP codec status.
  */
 typedef struct {
+	uint8_t bd_addr[6];                                 /*!< address */
 	uint8_t codec_type;                                 /*!< indicate codec */
 	union {
 		struct {
@@ -407,7 +408,6 @@ typedef struct {
  */
 
 /**
- * @fn        uint16_t rtk_bt_hfp_cfg(uint8_t role, void *p_conf_t)
  * @brief     hfp configuration.
  * @param[in] role: hfp role (RTK_BT_AUDIO_HFP_ROLE_AG/RTK_BT_AUDIO_HFP_ROLE_HF)
  * @param[in] p_conf_t: pointer of configuration data (rtk_bt_hfp_ag_conf_t/rtk_bt_hfp_hf_conf_t)
@@ -418,7 +418,6 @@ typedef struct {
 uint16_t rtk_bt_hfp_cfg(uint8_t role, void *p_conf_t);
 
 /**
- * @fn        uint16_t rtk_bt_hfp_connect(uint8_t *bd_addr)
  * @brief     send hfp connect request.
  * @param[in] bd_addr: bt address
  * @return
@@ -428,7 +427,6 @@ uint16_t rtk_bt_hfp_cfg(uint8_t role, void *p_conf_t);
 uint16_t rtk_bt_hfp_connect(uint8_t *bd_addr);
 
 /**
- * @fn        uint16_t rtk_bt_hfp_disconnect(uint8_t *bd_addr)
  * @brief     disconnect hfp.
  * @param[in] bd_addr: bt address
  * @return
@@ -438,7 +436,6 @@ uint16_t rtk_bt_hfp_connect(uint8_t *bd_addr);
 uint16_t rtk_bt_hfp_disconnect(uint8_t *bd_addr);
 
 /**
- * @fn        uint16_t rtk_bt_hfp_sco_connect(uint8_t *bd_addr)
  * @brief     start hfp sco connect.
  * @param[in] bd_addr: bt address
  * @return
@@ -448,7 +445,6 @@ uint16_t rtk_bt_hfp_disconnect(uint8_t *bd_addr);
 uint16_t rtk_bt_hfp_sco_connect(uint8_t *bd_addr);
 
 /**
- * @fn        uint16_t rtk_bt_hfp_sco_disconnect(uint8_t *bd_addr)
  * @brief     disconnect hfp sco.
  * @param[in] bd_addr: bt address
  * @return
@@ -458,7 +454,6 @@ uint16_t rtk_bt_hfp_sco_connect(uint8_t *bd_addr);
 uint16_t rtk_bt_hfp_sco_disconnect(uint8_t *bd_addr);
 
 /**
- * @fn        uint16_t rtk_bt_hfp_call_incoming(uint8_t *bd_addr, const char *call_num, uint8_t call_num_len, uint8_t call_num_type)
  * @brief     incoming call.
  * @param[in] bd_addr: bt address
  * @param[in] call_num: call number
@@ -471,7 +466,6 @@ uint16_t rtk_bt_hfp_sco_disconnect(uint8_t *bd_addr);
 uint16_t rtk_bt_hfp_call_incoming(uint8_t *bd_addr, const char *call_num, uint8_t call_num_len, uint8_t call_num_type);
 
 /**
- * @fn        uint16_t rtk_bt_hfp_call_answer(uint8_t *bd_addr)
  * @brief     answer call.
  * @param[in] bd_addr: bt address
  * @return
@@ -481,7 +475,6 @@ uint16_t rtk_bt_hfp_call_incoming(uint8_t *bd_addr, const char *call_num, uint8_
 uint16_t rtk_bt_hfp_call_answer(uint8_t *bd_addr);
 
 /**
- * @fn        uint16_t rtk_bt_hfp_call_terminate(uint8_t *bd_addr)
  * @brief     terminate call.
  * @param[in] bd_addr: bt address
  * @return
@@ -491,7 +484,6 @@ uint16_t rtk_bt_hfp_call_answer(uint8_t *bd_addr);
 uint16_t rtk_bt_hfp_call_terminate(uint8_t *bd_addr);
 
 /**
- * @fn        uint16_t rtk_bt_hfp_data_send(rtk_bt_hfp_sco_data_send_t *p_data_send_t)
  * @brief     hfp sco data send.
  * @param[in] p_data_send_t: send data struct pointer
  * @return
@@ -501,7 +493,6 @@ uint16_t rtk_bt_hfp_call_terminate(uint8_t *bd_addr);
 uint16_t rtk_bt_hfp_data_send(rtk_bt_hfp_sco_data_send_t *p_data_send_t);
 
 /**
- * @fn        uint16_t rtk_bt_hfp_batt_level_report(uint8_t *bd_addr, uint8_t power_level)
  * @brief     hfp report battery level.
  * @param[in] bd_addr: bt address
  * @param[in] power_level: battery power level
@@ -512,7 +503,6 @@ uint16_t rtk_bt_hfp_data_send(rtk_bt_hfp_sco_data_send_t *p_data_send_t);
 uint16_t rtk_bt_hfp_batt_level_report(uint8_t *bd_addr, uint8_t power_level);
 
 /**
- * @fn        uint16_t rtk_bt_hfp_speaker_gain_report(uint8_t *bd_addr, uint8_t gain)
  * @brief     hfp report speaker gain.
  * @param[in] bd_addr: bt address
  * @param[in] gain: speaker gain (0 - 15)
@@ -523,7 +513,6 @@ uint16_t rtk_bt_hfp_batt_level_report(uint8_t *bd_addr, uint8_t power_level);
 uint16_t rtk_bt_hfp_speaker_gain_report(uint8_t *bd_addr, uint8_t gain);
 
 /**
- * @fn        uint16_t rtk_bt_hfp_microphone_gain_report(uint8_t *bd_addr, uint8_t gain)
  * @brief     hfp report microphone gain.
  * @param[in] bd_addr: bt address
  * @param[in] gain: microphone gain (0 - 15)

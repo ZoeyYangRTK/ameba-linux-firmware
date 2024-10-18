@@ -33,7 +33,7 @@ Setup Guide
 	2. Type command "make menuconfig" under auto_build 
 	   choose MENUCONFIG FOR AP CONFIG => CONFIG USB:
 		[*] Enable USB
-		(HOST_MODE) USB Mode
+		(Host) USB Mode
 		[*] MSC
 	   choose CONFIG_VFS:
 		[*] Enable VFS FATFS 
@@ -42,7 +42,7 @@ Setup Guide
 	4. Download the generated images under auto_build to Ameba board.
 	5. Plugin Reset the board, following log shall be printed on the LOGUART console, make sure there is no USB related
 	error reported:
-		[MSC] USB host MSC demo started...
+		[MSC] USBH MSC demo start
 	6. Attach an U disk formatted with FATFS to the USB port of the board with USB OTG cable. 
 	7. Ameba board will recoganize the MSC device and do write/read performance test, check the log on the LOGUART console
 	and make sure there is no USB related error reported.
@@ -51,7 +51,7 @@ Setup Guide
 	1. Type command "make menuconfig" under auto_build
 	   choose MENUCONFIG FOR HP CONFIG => CONFIG USB:
 		[*] Enable USB
-		(HOST_MODE) USB Mode
+		(Host) USB Mode
 		[*] MSC
 	   choose CONFIG_VFS:
 		[*] Enable VFS FATFS

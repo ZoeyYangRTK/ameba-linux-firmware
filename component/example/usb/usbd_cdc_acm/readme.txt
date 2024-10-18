@@ -26,27 +26,27 @@ Setup Guide
 		Taking AmebaSmart in GCC environmnet for example.
 
 		To run USB CDC ACM device application on AP:
-        1. Type command "make menuconfig" under auto_build and choose MENUCONFIG FOR AP CONFIG => CONFIG USB:
+        1. Type command "make menuconfig" under amebasmart_gcc_project and choose MENUCONFIG FOR AP CONFIG => CONFIG USB:
 			[*] Enable USB
-			(DEVICE_MODE) USB Mode
+			(Device) USB Mode
 			[*] CDC ACM
            Save and exit.
-        2. Type command "make all EXAMPLE=usbd_cdc_acm" under auto_build to build the images.
-        3. Download the generated images under auto_build to Ameba board.
+        2. Type command "make all EXAMPLE=usbd_cdc_acm" under amebasmart_gcc_project to build the images.
+        3. Download the generated images under amebasmart_gcc_project to Ameba board.
         4. Reset the board, following log shall be printed on the LOGUART console, make sure there is no USB related error reported:
-			[CDC] CDC ACM demo started
+			[ACM] USBD CDC ACM demo start
         5. Connect the USB port of Ameba board to USB host (PC or another Ameba board as USB CDC ACM host) with USB cable.
         6. Launch any serial port tool (e.g. Realtek Trace Tool), open the virtual serial port against the USB port of
            Ameba board, send messages to the Ameba board and the board will echo back the received messages.
 		
 		To run USB CDC ACM device application on HP:
-        1. Type command "make menuconfig" under auto_build and choose MENUCONFIG FOR HP CONFIG => CONFIG USB:
+        1. Type command "make menuconfig" under amebasmart_gcc_project and choose MENUCONFIG FOR HP CONFIG => CONFIG USB:
 			[*] Enable USB
-			(DEVICE_MODE) USB Mode
+			(Device) USB Mode
 			[*] CDC ACM
            Save and exit.
-        2. Type command "make all" under auto_build and type "make EXAMPLE=usbd_cdc_acm" under project_hp to build the images.
-        3. Download the generated images under project_hp to Ameba board.
+        2. Type command "make all" under amebasmart_gcc_project and type "make EXAMPLE=usbd_cdc_acm" under amebasmart_gcc_project/project_hp to build the images.
+        3. Download the generated images under amebasmart_gcc_project/project_hp to Ameba board.
         4-6. Same with steps for AP.
 
         For other chips, refer to the AN for setup guide.
@@ -68,5 +68,6 @@ Other Reference
 
 Supported List
 ~~~~~~~~~~~~~~
-        Supported: Ameba-D, Ameba-D2, Ameba-Dplus, RTL8720F
+        Supported: AmebaD, AmebaSmart, AmebaDplus, RTL8720F
         Source code not in project: Ameba-1, Ameba-z, Ameba-pro
+

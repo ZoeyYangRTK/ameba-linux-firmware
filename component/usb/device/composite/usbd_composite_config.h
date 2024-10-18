@@ -29,11 +29,19 @@
 #define USBD_COMP_REMOTE_WAKEUP_EN		1U
 
 /* CDC ACM Endpoint parameters */
+#if defined (CONFIG_AMEBAGREEN2)
+#define USBD_COMP_CDC_BULK_IN_EP               0x82U
+#define USBD_COMP_CDC_BULK_OUT_EP              0x02U
+#define USBD_COMP_CDC_INTR_IN_EP               0x83U
+#define USBD_COMP_HID_INTR_OUT_EP              0x05U
+#define USBD_COMP_HID_INTR_IN_EP               0x84U
+#else
 #define USBD_COMP_CDC_BULK_IN_EP		0x81U
 #define USBD_COMP_CDC_BULK_OUT_EP		0x02U
 #define USBD_COMP_CDC_INTR_IN_EP		0x83U
 #define USBD_COMP_HID_INTR_OUT_EP		0x04U
 #define USBD_COMP_HID_INTR_IN_EP		0x85U
+#endif
 
 #define USBD_COMP_CTRL_BUF_SIZE			512U
 
@@ -55,12 +63,12 @@ typedef struct {
 } usbd_composite_cb_t;
 
 typedef struct {
-	u8 *ctrl_buf;
 	usb_setup_req_t ctrl_req;
 	usbd_class_driver_t *cdc;
 	usbd_class_driver_t *hid;
 	usbd_composite_cb_t *cb;
 	usb_dev_t *dev;
+	u8 *ctrl_buf;
 } usbd_composite_dev_t;
 
 /* Exported macros -----------------------------------------------------------*/

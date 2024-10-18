@@ -28,13 +28,13 @@ Setup Guide
 		To run USB composite device application on AP:
         1. Type command "make menuconfig" under auto_build and choose MENUCONFIG FOR AP CONFIG => CONFIG USB:
               [*] Enable USB
-              (DEVICE_MODE) USB Mode
+              (Device) USB Mode
               [*] Composite
            Save and exit.
         2. Type command "make all EXAMPLE=usbd_composite" under auto_build to build the images.
         3. Download the generated images under auto_build to Ameba board.
         4. Reset the board, following log shall be printed on the LOGUART console, make sure there is no USB related error reported:
-			[USB] Composite demo started
+			[COMP] USBD COMP demo start
         5. Connect the USB port of Ameba board to PC with USB cable.
         6. Launch any serial port tool (e.g. Realtek Trace Tool), open the virtual serial port against the USB port of
            Ameba board, send messages to the Ameba board and the board will echo back the received messages.
@@ -47,7 +47,7 @@ Setup Guide
 		To run USB CDC ACM device application on HP:
         1. Type command "make menuconfig" under auto_build and choose MENUCONFIG FOR HP CONFIG => CONFIG USB:
 			[*] Enable USB
-			(DEVICE_MODE) USB Mode
+			(Device) USB Mode
 			[*] Composite
            Save and exit.
         2. Type command "make all" under auto_build and type "make EXAMPLE=usbd_composite" under project_hp to build the images.

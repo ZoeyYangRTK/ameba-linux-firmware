@@ -146,8 +146,9 @@ typedef enum {
 	RTK_BT_PROFILE_LEAUDIO  =  BIT5,
 	RTK_BT_PROFILE_SPP      =  BIT6,
 	RTK_BT_PROFILE_HFP      =  BIT7,
-	RTK_BT_PROFILE_MESH     =  BIT8,
-	RTK_BT_PROFILE_HID      =  BIT9,
+	RTK_BT_PROFILE_PBAP     =  BIT8,
+	RTK_BT_PROFILE_MESH     =  BIT9,
+	RTK_BT_PROFILE_HID      =  BIT10,
 } rtk_bt_profile_t;
 
 /***************************************BLE group************************************/
@@ -238,8 +239,10 @@ typedef enum {
 	RTK_BT_LE_GAP_ACT_SET_SCAN_RSP_DATA,
 	RTK_BT_LE_GAP_ACT_START_ADV,
 	RTK_BT_LE_GAP_ACT_STOP_ADV,
+	RTK_BT_LE_GAP_ACT_GET_ADV_PARAM,
 	RTK_BT_LE_GAP_ACT_SCAN_INFO_FILTER,
 	RTK_BT_LE_GAP_ACT_SET_SCAN_PARAM,
+	RTK_BT_LE_GAP_ACT_GET_SCAN_PARAM,
 	RTK_BT_LE_GAP_ACT_START_SCAN,
 	RTK_BT_LE_GAP_ACT_STOP_SCAN,
 	RTK_BT_LE_GAP_ACT_CONN,
@@ -262,7 +265,9 @@ typedef enum {
 	RTK_BT_LE_GAP_ACT_SET_PRIVACY_MODE,
 	RTK_BT_LE_GAP_ACT_READ_LOCAL_RESOLV_ADDR,
 	RTK_BT_LE_GAP_ACT_READ_PEER_RESOLV_ADDR,
+	RTK_BT_LE_GAP_ACT_SET_PAIRING_MODE,
 	RTK_BT_LE_GAP_ACT_SET_SEC_PARAM,
+	RTK_BT_LE_GAP_ACT_GET_SEC_PARAM,
 	RTK_BT_LE_GAP_ACT_START_SECURITY,
 	RTK_BT_LE_GAP_ACT_PAIRING_CONFIRM,
 	RTK_BT_LE_GAP_ACT_PASSKEY_ENTRY,
@@ -309,6 +314,13 @@ typedef enum {
 	RTK_BT_LE_GAP_ACT_PAWR_SET_SUBEVENT_DATA,
 	RTK_BT_LE_GAP_ACT_PAWR_SET_RESPONSE_DATA,
 	RTK_BT_LE_GAP_ACT_PAWR_SYNC_SUBEVENT,
+	RTK_BT_LE_GAP_ACT_COC_REG_PSM,
+	RTK_BT_LE_GAP_ACT_COC_SET_PSM_SECURITY,
+	RTK_BT_LE_GAP_ACT_COC_SET_PARAM,
+	RTK_BT_LE_GAP_ACT_COC_GET_CHAN_PARAM,
+	RTK_BT_LE_GAP_ACT_COC_CONN,
+	RTK_BT_LE_GAP_ACT_COC_DISCONN,
+	RTK_BT_LE_GAP_ACT_COC_SEND_DATA,
 	RTK_BT_LE_GAP_ACT_MAX,
 } rtk_bt_le_gap_act_t;
 
@@ -353,6 +365,10 @@ typedef enum {
 	RTK_BT_LE_GAP_EVT_CONN_CTE_REQ_FAIL_IND,        /*!< Indicate LE CTE request fail, with msg @ref rtk_bt_le_gap_cte_req_fail_ind_t */
 	RTK_BT_LE_GAP_EVT_PAWR_DATA_REQ_IND,            /*!< Indicate LE periodic adv subevent data request, with msg @ref rtk_bt_le_gap_pawr_data_req_ind_t */
 	RTK_BT_LE_GAP_EVT_PAWR_RSP_IND,                 /*!< Indicate LE periodic adv response from synced device, with msg @ref rtk_bt_le_gap_pawr_rsp_ind_t */
+	RTK_BT_LE_GAP_EVT_COC_CONNECT_IND,              /*!< Indicate LE l2cap credit based connection-oriented channel(coc) connect complete, with msg @ref rtk_bt_le_coc_conn_state_ind_t */
+	RTK_BT_LE_GAP_EVT_COC_DISCONNECT_IND,           /*!< Indicate LE coc chan disconnect complete, with msg @ref rtk_bt_le_coc_conn_state_ind_t */
+	RTK_BT_LE_GAP_EVT_COC_SEND_DATA_RESULT_IND,     /*!< Indicate LE coc send data result, with msg @ref rtk_bt_le_coc_send_data_res_ind_t */
+	RTK_BT_LE_GAP_EVT_COC_RECEIVE_DATA_IND,         /*!< Indicate LE coc receive data from remote, with msg @ref rtk_bt_le_coc_receive_data_ind_t */
 	RTK_BT_LE_GAP_EVT_MAX,
 } rtk_bt_le_gap_evt_t;
 
@@ -622,6 +638,7 @@ typedef enum {
 	RTK_BT_LE_AUDIO_EVT_ASCS_GET_PREFER_QOS_IND,            /* Direct calling, BT api shall not be called in this event case. */
 	RTK_BT_LE_AUDIO_EVT_ASCS_ASE_STATE_IND,
 	RTK_BT_LE_AUDIO_EVT_ASCS_SETUP_DATA_PATH_IND,
+	RTK_BT_LE_AUDIO_EVT_ASCS_CIS_CONN_INFO,
 	RTK_BT_LE_AUDIO_EVT_ASCS_REMOVE_DATA_PATH_IND,
 	RTK_BT_LE_AUDIO_EVT_PA_SYNC_STATE_IND,
 	RTK_BT_LE_AUDIO_EVT_BIG_SYNC_STATE_IND,
@@ -703,6 +720,7 @@ typedef enum {
 	RTK_BT_BR_GP_HFP,                             /*!< BR/EDR hfp group */
 	RTK_BT_BR_GP_SDP,                             /*!< BR/EDR sdp group */
 	RTK_BT_BR_GP_HID,                             /*!< BR/EDR hid group */
+	RTK_BT_BR_GP_PBAP,                            /*!< BR/EDR phone book access profile */
 	RTK_BT_BR_GP_MAX,
 } rtk_bt_br_group_t;
 
@@ -823,6 +841,7 @@ typedef enum {
 	RTK_BT_AVRCP_EVT_VOLUME_DOWN,                   /*!< AVRCP volume down */
 	RTK_BT_AVRCP_EVT_REG_VOLUME_CHANGED,            /*!< AVRCP volume reg changed */
 	RTK_BT_AVRCP_EVT_CONN_CMPL,                     /*!< AVRCP conn completion */
+	RTK_BT_AVRCP_EVT_DISCONN_CMPL,                  /*!< AVRCP disconn completion */
 	RTK_BT_AVRCP_EVT_PLAY_STATUS_CHANGED_REG_REQ,   /*!< AVRCP play status changed */
 	RTK_BT_AVRCP_EVT_PLAY_REQ_EVENT,                /*!< AVRCP play request event */
 	RTK_BT_AVRCP_EVT_PAUSE_REQ_EVENT,               /*!< AVRCP pause request event */
@@ -898,6 +917,7 @@ typedef enum {
  */
 typedef enum {
 	RTK_BT_SDP_ACT_RECORD_ADD = 1,
+	RTK_BT_SDP_ACT_DISCOV_START,
 	RTK_BT_SDP_ACT_MAX,
 } rtk_bt_sdp_act_t;
 
@@ -906,7 +926,8 @@ typedef enum {
  * @brief     Bluetooth SDP event indication
  */
 typedef enum {
-	RTK_BT_SDP_EVT_MAX = 1,
+	RTK_BT_SDP_EVT_DID_ATTR_INFO = 1,
+	RTK_BT_SDP_EVT_MAX,
 } rtk_bt_sdp_evt_t;
 
 /**
@@ -960,6 +981,36 @@ typedef enum {
 	RTK_BT_HFP_EVT_AG_CALL_STATUS,                     /*!< HFP ag call status incoming */
 	RTK_BT_HFP_EVT_MAX,
 } rtk_bt_hfp_evt_t;
+
+/**
+ * @typedef   rtk_bt_pbap_act_t
+ * @brief     Bluetooth PBAP action
+ */
+typedef enum {
+	RTK_BT_PBAP_ACT_CONNECT = 1,
+	RTK_BT_PBAP_ACT_DISCONNECT,
+	RTK_BT_PBAP_ACT_SET_PHONE_BOOK,
+	RTK_BT_PBAP_ACT_PHONE_BOOK_PULL,
+	RTK_BT_PBAP_ACT_PHONE_BOOK_PULL_CONTINUE,
+	RTK_BT_PBAP_ACT_PHONE_BOOK_SIZE_GET,
+	RTK_BT_PBAP_ACT_PULL_CALLER_ID_NAME,
+	RTK_BT_PBAP_ACT_MAX,
+} rtk_bt_pbap_act_t;
+
+/**
+ * @typedef   rtk_bt_pbap_evt_t
+ * @brief     Bluetooth PBAP event indication
+ */
+typedef enum {
+	RTK_BT_PBAP_EVT_CONN_CMPL = 1,                  /*!< PBAP connection completion */
+	RTK_BT_PBAP_EVT_CONN_FAIL,                      /*!< PBAP connection fail */
+	RTK_BT_PBAP_EVT_DISCONN_CMPL,                   /*!< PBAP disconnectoin completion */
+	RTK_BT_PBAP_EVT_SET_PHONE_BOOK_CMPL,            /*!< PBAP set phone book completion */
+	RTK_BT_PBAP_EVT_GET_PHONE_BOOK_CMPL,            /*!< PBAP get phone book completion */
+	RTK_BT_PBAP_EVT_CALLER_ID_NAME,                 /*!< PBAP caller id name indication */
+	RTK_BT_PBAP_EVT_GET_PHONE_BOOK_SIZE_CMPL,       /*!< PBAP get phone book size completion */
+	RTK_BT_PBAP_EVT_MAX,
+} rtk_bt_pbap_evt_t;
 
 /***************************************BT gap common group************************************/
 /**
@@ -1091,7 +1142,6 @@ struct evt_ret_mem_option {
  */
 
 /**
- * @fn        void rtk_bt_le_addr_to_str(void *paddr, char *str, uint32_t len)
  * @brief     Convert bt address hexnum to normal format string.
  * @param[in] paddr: Device address
  * @param[out] str: String buf to get the normal format address
@@ -1100,7 +1150,6 @@ struct evt_ret_mem_option {
 void rtk_bt_le_addr_to_str(void *paddr, char *str, uint32_t len);
 
 /**
- * @fn        void rtk_bt_addr_val_to_str(uint8_t *paddr, char *str, uint32_t len)
  * @brief     Convert bt address value hexnum to normal format string.
  * @param[in] paddr: Device address
  * @param[out] str: String buf to get the normal format address
@@ -1109,7 +1158,6 @@ void rtk_bt_le_addr_to_str(void *paddr, char *str, uint32_t len);
 void rtk_bt_addr_val_to_str(uint8_t *paddr, char *str, uint32_t len);
 
 /**
- * @fn        void rtk_bt_br_addr_to_str(uint8_t *paddr, char *str, uint32_t len)
  * @brief     Convert bt address hexnum to normal format string.
  * @param[in] paddr: Device address
  * @param[out] str: String buf to get the normal format address
@@ -1118,7 +1166,6 @@ void rtk_bt_addr_val_to_str(uint8_t *paddr, char *str, uint32_t len);
 void rtk_bt_br_addr_to_str(uint8_t *paddr, char *str, uint32_t len);
 
 /**
- * @fn        rtk_bt_addr_to_str(uint8_t type, uint8_t *paddr, char *str, uint32_t len)
  * @brief     Convert bt address hexnum to normal format string.
  * @param[in] type: Device address type
  * @param[in] paddr: Device address
@@ -1128,7 +1175,6 @@ void rtk_bt_br_addr_to_str(uint8_t *paddr, char *str, uint32_t len);
 void rtk_bt_addr_to_str(uint8_t type, uint8_t *paddr, char *str, uint32_t len);
 
 /**
- * @fn        uint16_t rtk_bt_evt_register_callback(uint8_t group, rtk_bt_evt_cb_t cb)
  * @brief     Register event callback
  * @note      User's event callback will be excuted in bt_evt_task @ref rtk_bt_evt_taskentry,
  *            if user's callback is complex and consume too much stack size, please enlarge
@@ -1142,7 +1188,6 @@ void rtk_bt_addr_to_str(uint8_t type, uint8_t *paddr, char *str, uint32_t len);
 uint16_t rtk_bt_evt_register_callback(uint8_t group, rtk_bt_evt_cb_t cb);
 
 /**
- * @fn        uint16_t rtk_bt_evt_unregister_callback(uint8_t group)
  * @brief     Unregister event callback
  * @param[in] group: API cmd/evt group
  * @return
@@ -1168,12 +1213,27 @@ uint16_t rtk_bt_evt_indicate(void *evt, uint8_t *cb_ret);
 
 void rtk_bt_event_free(rtk_bt_evt_t *pevt);
 
-/* for api log print */
-#if 1
-#define API_PRINT(...)
-#else
-#define API_PRINT   printf
-#endif
+#define LE_TO_U32(_a)                                   \
+        (((uint32_t)(*((uint8_t *)(_a) + 0)) << 0)  |   \
+         ((uint32_t)(*((uint8_t *)(_a) + 1)) << 8)  |   \
+         ((uint32_t)(*((uint8_t *)(_a) + 2)) << 16) |   \
+         ((uint32_t)(*((uint8_t *)(_a) + 3)) << 24))
+
+#define LE_TO_U16(_a)                           \
+        (((uint16_t)(*((uint8_t *)(_a) + 0)) << 0)  |   \
+         ((uint16_t)(*((uint8_t *)(_a) + 1)) << 8))
+
+#define U32_TO_LE(_a, _data) {                          \
+        *((uint8_t *)(_a) + 0) = ((_data) >> 0) & 0xFF; \
+        *((uint8_t *)(_a) + 1) = ((_data) >> 8) & 0xFF; \
+        *((uint8_t *)(_a) + 2) = ((_data) >> 16) & 0xFF;\
+        *((uint8_t *)(_a) + 3) = ((_data) >> 24) & 0xFF;\
+    }
+
+#define U16_TO_LE(_a, _data) {                          \
+        *((uint8_t *)(_a) + 0) = ((_data) >> 0) & 0xFF; \
+        *((uint8_t *)(_a) + 1) = ((_data) >> 8) & 0xFF; \
+    }
 
 #ifndef HI_WORD
 #define HI_WORD(x)      ((uint8_t)((x & 0xFF00) >> 8))
@@ -1183,30 +1243,13 @@ void rtk_bt_event_free(rtk_bt_evt_t *pevt);
 #define LO_WORD(x)      ((uint8_t)(x))
 #endif
 
-#ifndef UUID128_STR
-#define UUID128_STR "%08lx-%04x-%04x-%04x-%04x%08lx"
-#endif
-
-/* uuid128 shall be a pointer of (uint8_t *) */
-#ifndef UUID128_VAL
-#define UUID128_VAL(uuid128) \
-    *(uint32_t*)(uuid128+12), *(uint16_t*)(uuid128+10), \
-    *(uint16_t*)(uuid128+8), *(uint16_t*)(uuid128+6), \
-    *(uint16_t*)(uuid128+4), *(uint32_t*)uuid128
-#endif
-
-#define APP_PRINT_SEPARATOR()                                                               \
-    do {                                                                                    \
-        printf("############################################################\r\n \r\n");    \
-    } while (0)
-
-#define APP_PROMOTE(...)                                                                \
-    do {                                                                                \
-        printf("\r\n");                                                                 \
-        printf("############################################################\r\n");     \
-        printf(__VA_ARGS__);                                                            \
-        printf("############################################################\r\n");     \
-        printf("\r\n");                                                                 \
+#define BT_APP_PROCESS(func)                                \
+    do {                                                    \
+        uint16_t __func_ret = func;                         \
+        if (RTK_BT_OK != __func_ret) {                      \
+            BT_LOGE("[APP] %s failed! line: %d, err: 0x%x\r\n", __func__, __LINE__, __func_ret);   \
+            return -1;                                      \
+        }                                                   \
     } while (0)
 
 #ifdef __cplusplus

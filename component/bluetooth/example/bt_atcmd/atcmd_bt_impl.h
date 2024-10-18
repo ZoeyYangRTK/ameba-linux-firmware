@@ -15,23 +15,6 @@ extern "C"
 #include <basic_types.h>
 #include <bt_debug.h>
 
-#if defined(CONFIG_NEW_ATCMD) && CONFIG_NEW_ATCMD
-
-#if defined(ATCMD_BT_CUT_DOWN) && ATCMD_BT_CUT_DOWN
-#define BTDEMO_AT_PRINTK(fmt, args...) AT_PRINTK("[ATBE] "fmt, ##args)
-#define BLEGAP_AT_PRINTK(fmt, args...) AT_PRINTK("[ATBC] "fmt, ##args)
-#else /* ATCMD_BT_CUT_DOWN */
-#define BTDEMO_AT_PRINTK(fmt, args...) AT_PRINTK("[AT+BTDEMO] "fmt, ##args)
-#define BLEGAP_AT_PRINTK(fmt, args...) AT_PRINTK("[AT+BLEGAP] "fmt, ##args)
-#endif
-
-#else /* CONFIG_NEW_ATCMD */
-
-#define BTDEMO_AT_PRINTK(fmt, args...) AT_PRINTK("[ATBE] "fmt, ##args)
-#define BLEGAP_AT_PRINTK(fmt, args...) AT_PRINTK("[ATBC] "fmt, ##args)
-
-#endif
-
 typedef int (*cmd_func_t)(int argc, char *argv[]);
 
 typedef struct {
@@ -43,7 +26,7 @@ typedef struct {
 
 typedef struct cmd_help_tbl {
 	const char *name;
-	const char *discriptor;
+	const char *descriptor;
 	struct cmd_help_tbl *sub_tbl;
 } cmd_help_table_t;
 
@@ -107,6 +90,19 @@ int atcmd_bt_gmap(int argc, char *argv[]);
 int atcmd_bt_config(int argc, char *argv[]);
 
 int atcmd_bt_pts(int argc, char *argv[]);
+
+/* bt vendor cmd implementation */
+int atcmd_bt_tx_power_gain(int argc, char *argv[]);
+
+int atcmd_bt_hci_debug_enable(int argc, char *argv[]);
+
+int atcmd_bt_sleep_mode(int argc, char *argv[]);
+
+/*int atcmd_bt_ant(int argc, char *argv[]);*/
+
+int atcmd_bt_set_tx_power(int argc, char *argv[]);
+
+int atcmd_bt_sof_eof_ind(int argc, char *argv[]);
 
 /* device cmd impl */
 int atcmd_bt_device(int argc, char *argv[]);
@@ -195,6 +191,9 @@ int atcmd_bt_gatts(int argc, char *argv[]);
 /* gattc cmd impl */
 int atcmd_bt_gattc(int argc, char *argv[]);
 
+/* sdp cmd impl */
+int atcmd_bt_sdp_cmd(int argc, char *argv[]);
+
 /* a2dp cmd impl */
 int atcmd_bt_a2dp_cmd(int argc, char *argv[]);
 
@@ -210,8 +209,14 @@ int atcmd_bt_hid_cmd(int argc, char *argv[]);
 /* hfp cmd impl */
 int atcmd_bt_hfp_cmd(int argc, char *argv[]);
 
+/* pbap cmd impl */
+int atcmd_bt_pbap_cmd(int argc, char *argv[]);
+
 /* le audio bap */
 int atcmd_bt_bap_cmd(int argc, char *argv[]);
+
+/* le audio iso */
+int atcmd_bt_iso_cmd(int argc, char *argv[]);
 
 /* le audio cap */
 int atcmd_bt_cap_cmd(int argc, char *argv[]);
@@ -227,6 +232,13 @@ int atcmd_bt_gmap_cmd(int argc, char *argv[]);
 
 /* pts cmd impl */
 int atcmd_bt_pts_cmd(int argc, char *argv[]);
+
+/* transfer module demo impl */
+int atcmd_bt_transfer_module(int argc, char *argv[]);
+
+/* transfer module cmd impl */
+int atcmd_bt_transfer_module_cmd(int argc, char *argv[]);
+
 #ifdef __cplusplus
 }
 #endif

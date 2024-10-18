@@ -122,6 +122,18 @@ typedef struct {
 	uint32_t            length;                                 //!< indicate length of record data
 } rtk_sdp_record_t;
 
+/**
+ * @struct    rtk_sdp_did_attr_info
+ * @brief     sdp did discovery call back.
+ */
+typedef struct {
+	uint8_t             bd_addr[6];
+	uint16_t            specific_id;
+	uint16_t            vendor_id;
+	uint16_t            vendor_src;
+	uint16_t            product_id;
+	uint16_t            version;
+} rtk_sdp_did_attr_info;
 
 /* ------------------------- Functions Declaration ------------------------- */
 /**
@@ -132,7 +144,6 @@ typedef struct {
  */
 
 /**
- * @fn        uint16_t rtk_sdp_record_add(void *record, uint32_t length)
  * @brief     set profile record.
  * @param[in] record: record data pointer
  * @param[in] length: data length
@@ -141,6 +152,15 @@ typedef struct {
  *            - Others: Error code
  */
 uint16_t rtk_sdp_record_add(void *record, uint32_t length);
+
+/**
+ * @brief     start bt sdp discovery.
+ * @param[in] bd_addr: bt address
+ * @return
+ *            - 0  : Succeed
+ *            - Others: Error code
+ */
+uint16_t rtk_bt_sdp_discov_start(uint8_t *bd_addr);
 
 /**
  * @}

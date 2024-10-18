@@ -8,7 +8,7 @@
 #define __ATCMD_BT_MP_H__
 
 #include "platform_autoconf.h"
-#include "log_service.h"
+#include "atcmd_service.h"
 #include "os_wrapper.h"
 #include "wifi_intf_drv_to_bt.h"
 
@@ -26,8 +26,8 @@ typedef struct _at_command_mp_ext_item_ {
 #define MP_EXT2_PREFIX		"[ATM2]: "
 #define MP_EXT2_PRINTF(...) \
 		do{ \
-			_AT_PRINTK(MP_EXT2_PREFIX); \
-			_AT_PRINTK(__VA_ARGS__); \
+			RTK_LOGS(NOTAG, MP_EXT2_PREFIX); \
+			RTK_LOGS(NOTAG, __VA_ARGS__); \
 		}while(0)
 
 #define UART_BRIDGE_USAGE		"ATM2=bridge\n"
@@ -42,7 +42,8 @@ extern void rtk_bt_mp_power_on(void);
 extern void rtk_bt_mp_power_off(void);
 extern void rtk_bt_set_bt_antenna(uint8_t ant);
 
-extern void print_bt_mp_at(void);
+void print_bt_mp_at(void);
+void at_mp_init(void);
 
 #endif /* #if CONFIG_ATCMD_MP */
 #endif /* #if CONFIG_BT */

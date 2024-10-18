@@ -23,11 +23,16 @@
 #include "inic_ipc.h"
 #if !defined(CONFIG_AS_INIC_NP)
 #include "wpa_lite_intf.h"
+#include <wifi_auto_reconnect.h>
 #endif
 
 #if defined (CONFIG_LWIP_LAYER) && CONFIG_LWIP_LAYER
 #include <lwip_netconf.h>
 #include <dhcp/dhcps.h>
+#endif
+
+#ifdef CONFIG_ENABLE_EAP
+extern void eap_disconnected_hdl(void);
 #endif
 
 /******************************************************
@@ -38,8 +43,8 @@ extern rtw_joinstatus_callback_t p_wifi_joinstatus_internal_callback;
 static event_list_elem_t     event_callback_list[WIFI_EVENT_MAX][WIFI_EVENT_MAX_ROW];
 
 extern write_fast_connect_info_ptr p_store_fast_connect_info;
-extern rtw_joinstatus_callback_t p_wifi_joinstatus_user_callback;
 extern enum rtw_join_status_type rtw_join_status;
+extern enum _rtw_result_t join_fail_reason;
 extern struct internal_join_block_param *join_block_param;
 extern wifi_jioninfo_free_ptr p_wifi_join_info_free;
 //----------------------------------------------------------------------------//
@@ -72,17 +77,16 @@ void wifi_indication(enum rtw_event_indicate event, char *buf, int buf_len, int 
 	//		not available for the following operations.
 	//		ex: using semaphore to notice another thread.
 
-#if defined(CONFIG_AS_INIC_NP)
+#if defined(CONFIG_AS_INIC_NP) || defined(CONFIG_SDIO_BRIDGE)
 	inic_wifi_event_indicate(event, buf, buf_len, flags);
 #endif
 
+#ifndef CONFIG_AS_INIC_NP
 	if (event == WIFI_EVENT_JOIN_STATUS) {
-		if (p_wifi_joinstatus_internal_callback) {
-			p_wifi_joinstatus_internal_callback((enum rtw_join_status_type)flags);
-		}
-	} else {
-		rtw_indicate_event_handle(event, buf, buf_len, flags);
+		wifi_event_join_status_internal_hdl(buf, flags);
 	}
+	rtw_indicate_event_handle(event, buf, buf_len, flags);
+#endif
 }
 
 void wifi_reg_event_handler(unsigned int event_cmds, rtw_event_handler_t handler_func, void *handler_user_data)
@@ -125,13 +129,14 @@ void init_event_callback_list(void)
 	memset(event_callback_list, 0, sizeof(event_callback_list));
 }
 
-void wifi_join_status_indicate(enum rtw_join_status_type join_status)
+void wifi_event_join_status_internal_hdl(char *buf, int flags)
 {
-#ifndef CONFIG_MP_SHRINK
-#ifndef CONFIG_AS_INIC_NP
+#if !defined(CONFIG_MP_SHRINK) && !defined(CONFIG_AS_INIC_NP)
 	struct deauth_info  *deauth_data, *deauth_data_pre;
 	u8 zero_mac[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-#endif
+
+	enum rtw_join_status_type join_status = (enum rtw_join_status_type)flags;
+	struct rtw_event_join_fail_info_t *fail_info = (struct rtw_event_join_fail_info_t *)buf;
 
 	/* step 1: internal process for different status*/
 	if (join_status == RTW_JOINSTATUS_SUCCESS) {
@@ -144,12 +149,11 @@ void wifi_join_status_indicate(enum rtw_join_status_type join_status)
 		if (p_store_fast_connect_info) {
 			p_store_fast_connect_info(0, 0);
 		}
-#endif
-
 		if (p_wifi_join_info_free) {
 			/* free key here after join success */
 			p_wifi_join_info_free(IFACE_PORT0);
 		}
+#endif
 
 		/* if Synchronous connection, up sema when connect success*/
 		if (join_block_param && join_block_param->block) {
@@ -160,6 +164,7 @@ void wifi_join_status_indicate(enum rtw_join_status_type join_status)
 	if (join_status == RTW_JOINSTATUS_FAIL) {
 		/* if synchronous connection, up sema when connect fail*/
 		if (join_block_param && join_block_param->block) {
+			join_fail_reason = fail_info->fail_reason;
 			rtos_sema_give(join_block_param->join_sema);
 		}
 	}
@@ -184,16 +189,27 @@ void wifi_join_status_indicate(enum rtw_join_status_type join_status)
 		}
 		rtos_mem_free((u8 *)deauth_data_pre);
 #endif
+
+#ifdef CONFIG_ENABLE_EAP
+		eap_disconnected_hdl();
+#endif
 	}
 
 	rtw_join_status = join_status;
 
-	/* step 2: execute user callback to process join_status*/
-	if (p_wifi_joinstatus_user_callback) {
-		p_wifi_joinstatus_user_callback(join_status);
+	if ((join_status == RTW_JOINSTATUS_DISCONNECT) || (join_status == RTW_JOINSTATUS_FAIL)) {
+		/*wpa lite disconnect hdl*/
+		u8 port = IFACE_PORT0;
+		rtw_psk_disconnect_hdl(buf, 0, flags, &port);
 	}
+
+#if CONFIG_AUTO_RECONNECT
+	rtw_reconn_join_status_hdl(buf, flags);
+#endif
+
 #else
-	UNUSED(join_status);
+	UNUSED(flags);
+	UNUSED(buf);
 #endif
 }
 

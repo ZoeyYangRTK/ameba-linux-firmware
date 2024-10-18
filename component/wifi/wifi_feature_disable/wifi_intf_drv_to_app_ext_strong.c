@@ -1,13 +1,6 @@
 #include <wifi_conf.h>
 u16 call_noused = 0;
 
-int wifi_get_disconn_reason_code(unsigned short *reason_code)
-{
-	UNUSED(reason_code);
-	call_noused = __LINE__;
-	return -1;
-}
-
 int wifi_get_scan_records(unsigned int *AP_num, char *scan_buf)
 {
 	UNUSED(AP_num);
@@ -194,14 +187,6 @@ int wifi_get_sw_statistic(unsigned char idx, struct _rtw_sw_statistics_t *sw_sta
 	return -1;
 }
 
-int wifi_del_station(unsigned char wlan_idx, unsigned char *hwaddr)
-{
-	UNUSED(wlan_idx);
-	UNUSED(hwaddr);
-	call_noused = __LINE__;
-	return -1;
-}
-
 u8 wifi_driver_is_mp(void)
 {
 	call_noused = __LINE__;
@@ -382,8 +367,9 @@ int wifi_zigbee_coex_zb_rfk(void)
 	return -1;
 }
 
-void wifi_wpa_sta_4way_fail_notify(void)
+void wifi_wpa_4way_status_indicate(struct rtw_wpa_4way_status *rpt_4way)
 {
+	UNUSED(rpt_4way);
 	call_noused = __LINE__;
 }
 
@@ -400,11 +386,10 @@ void wifi_promisc_enable(u32 enable, struct _promisc_para_t *para)
 	call_noused = __LINE__;
 }
 
-void wifi_speaker_setting(u8 mode, u8 nav_thresh, u8 relay_en)
+void wifi_speaker_setting(enum SPEAKER_SET_TYPE set_type, union speaker_set *settings)
 {
-	UNUSED(mode);
-	UNUSED(nav_thresh);
-	UNUSED(relay_en);
+	UNUSED(set_type);
+	UNUSED(settings);
 	call_noused = __LINE__;
 }
 
@@ -412,5 +397,20 @@ void wifi_set_owe_param(struct rtw_owe_param_t *owe_param)
 {
 	UNUSED(owe_param);
 	call_noused = __LINE__;
+}
+
+int wifi_set_tx_power(struct rtw_tx_power_ctl_info_t *txpwr_ctrl_info)
+{
+	UNUSED(txpwr_ctrl_info);
+	call_noused = __LINE__;
+	return -1;
+}
+
+int wifi_get_tx_power(u8 rate, s8 *txpwr)
+{
+	UNUSED(rate);
+	UNUSED(txpwr);
+	call_noused = __LINE__;
+	return -1;
 }
 

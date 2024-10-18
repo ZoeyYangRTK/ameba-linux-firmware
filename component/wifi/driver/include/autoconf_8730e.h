@@ -18,34 +18,33 @@
 #ifndef AUTOCONF_8730E_H
 #define AUTOCONF_8730E_H
 
-#ifndef CONFIG_RTL8730E
-#define CONFIG_RTL8730E
-#endif
-#undef RTL8730E_SUPPORT
-#define RTL8730E_SUPPORT 1
-
 /* For STA+AP Concurrent MODE */
 /****************** configurations for concurrent mode ************************/
-//#define CONFIG_MCC_MODE
-#define NET_IF_NUM		2
+//#define CONFIG_NAN
+#define CONFIG_MCC_MODE
+//#define CONFIG_MCC_NAN_TEST
+#ifdef CONFIG_NAN
+#define NET_IF_NUM	3
+#define SUPPORT_ADAPTER_NUM	3
+#else
+#define NET_IF_NUM 2
 #define SUPPORT_ADAPTER_NUM	2
+#endif
 /**************** configurations for concurrent mode end **********************/
 
 /************************* Default Values of User Configure *****************************/
 /* Upper limit of STAs connected with SoftAP, more STAs connected will cost more heap*/
 #define AP_STA_NUM	12
+#define MACID_HW_MAX_NUM		16
 /************************* Default Values of User Configure End***************************/
 
-//#define CONFIG_NAN
 #ifdef CONFIG_NAN
-#undef NET_IF_NUM
-#define NET_IF_NUM	3
 #define CONFIG_NAN_PAIRING
 #define CONFIG_TWT
-#undef SUPPORT_ADAPTER_NUM
-#define SUPPORT_ADAPTER_NUM	3
-#undef AP_STA_NUM
-#define AP_STA_NUM	6
+#endif
+
+#ifdef CONFIG_MCC_MODE
+#define CONFIG_TWT
 #endif
 
 /* Configure for bus */
@@ -86,8 +85,6 @@
 //#define CONFIG_SUPPORT_DYNAMIC_TXPWR
 #define RTL8730E_WL_TODO
 
-#define NUM_STA (2 + AP_STA_NUM) /*one for bcmc, one for sta mode*/
-
 /*enable dynamic mechanism for driver*/
 #define CONFIG_WIFI_RA
 #define CONFIG_WIFI_DIG
@@ -100,9 +97,9 @@
 #define DRV_BB_RUA_DISABLE
 #define DRV_BB_LA_MODE_DISABLE
 #define DRV_BB_PWR_CTRL_DISABLE
+#define DRV_BB_CFO_TRK_DISABLE
 //#define DRV_BB_ENV_MNTR_DISABLE
 #define DRV_BB_DFS_DISABLE
-#define PHL_MAX_STA_NUM NUM_STA
 
 #define CONFIG_80211AC_VHT
 #ifdef CONFIG_80211AC_VHT
@@ -169,13 +166,14 @@
 #define DRV_BB_DGB_SUPPORT_DISABLE
 #define DRV_RF_DBG_TRACE_DISABLE
 #define DRV_BB_CH_INFO_DISABLE
-#define DRV_BB_CFO_TRK_DISABLE
 #define DRV_BB_ENV_MNTR_DISABLE
 #define DRV_BB_PHYSTS_PARSING_DISABLE
 #define DRV_BB_TIMER_SUPPORT_DISABLE
 #endif
 
 #ifdef CONFIG_MP_SHRINK
+#undef CONFIG_TWT
+#undef CONFIG_MCC_MODE
 #undef CONFIG_DFS
 #undef CONFIG_FW_C2H_PKT
 #undef CONFIG_IEEE80211W

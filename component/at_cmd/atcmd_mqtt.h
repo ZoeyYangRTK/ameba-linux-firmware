@@ -22,6 +22,10 @@ extern "C" {
 #include "os_wrapper.h"
 
 #ifndef CONFIG_MP_INCLUDED
+
+/* Remain 30 bytes for command-header and other parameters. */
+#define MQTT_SINGLE_STR_LEN         (UART_LOG_CMD_BUFLEN - 30)
+
 /* There are 4 connection IDs at most. */
 #define MQTT_MAX_CLIENT_NUM         4
 
@@ -31,7 +35,7 @@ extern "C" {
 
 #define MQTT_DEFAULT_RETAIN         0
 
-#define MQTT_DEFAULT_SENDBUF_SIZE   512
+#define MQTT_DEFAULT_SENDBUF_SIZE   MQTT_SINGLE_STR_LEN
 
 #define MQTT_SELECT_TIMEOUT         1
 
@@ -40,46 +44,27 @@ extern "C" {
 #define MQTT_CONNECT_LATER          1
 
 /* Host name's length (excluding '\0'). */
-#define MQTT_MAX_HOSTNAME_LEN       100
+#define MQTT_MAX_HOSTNAME_LEN       MQTT_SINGLE_STR_LEN
 
 /* Client ID's length  (excluding '\0').*/
-#define MQTT_MAX_CLIENT_ID_LEN      100
+#define MQTT_MAX_CLIENT_ID_LEN      MQTT_SINGLE_STR_LEN
 
 /* username's length  (excluding '\0'). */
-#define MQTT_MAX_USERNAME_LEN       100
+#define MQTT_MAX_USERNAME_LEN       MQTT_SINGLE_STR_LEN
 
 /* password's length  (excluding '\0'). */
-#define MQTT_MAX_PASSWORD_LEN       100
+#define MQTT_MAX_PASSWORD_LEN       MQTT_SINGLE_STR_LEN
 
 /* topic's length  (excluding '\0'). */
-#define MQTT_MAX_TOPIC_LEN          100
+#define MQTT_MAX_TOPIC_LEN          MQTT_SINGLE_STR_LEN
 
 /* msg's length  (excluding '\0'). */
-#define MQTT_MAX_MSG_LEN            100
+#define MQTT_MAX_MSG_LEN            MQTT_DEFAULT_SENDBUF_SIZE
 
 #define ATCMD_MQTT_TASK_PRIORITY    4
 
 /* Default timeout == 60s. */
 #define MQTT_CMD_PKT_TIMEOUT_MS     60000
-
-typedef enum MQTT_CONNECT_CMD_TYPES_e {
-	MQTT_CONNECT_CLEINT_ID = 0,
-	MQTT_CONNECT_USERNAME,
-	MQTT_CONNECT_PASSWORD,
-	MQTT_CONNECT_SEND,
-	MQTT_CONNECT_CMD_NUM
-}
-MQTT_CONNECT_CMD_TYPES;
-
-typedef enum MQTT_PUBLISH_CMD_TYPES_e {
-	MQTT_PUBLISH_QOS = 0,
-	MQTT_PUBLISH_RETAIN,
-	MQTT_PUBLISH_TOPIC,
-	MQTT_PUBLISH_MSG,
-	MQTT_PUBLISH_SEND,
-	MQTT_PUBLISH_CMD_NUM
-}
-MQTT_PUBLISH_CMD_TYPES;
 
 typedef enum MQTT_CONFIG_CMD_TYPES_e {
 	MQTT_CONFIG_VERSION = 0,
@@ -146,6 +131,8 @@ typedef struct MQTT_CONTROL_BLOCK_t {
 	char        *topic[MAX_MESSAGE_HANDLERS];
 	MQTT_PUB_DATA   pubData;
 	u8          networkConnect;
+	u8          offline;        /* Set to 1 when offline during connecting status. */
+	u8          initialConnect; /* Set to 1 between MQTTCONN and CONN_ACK. */
 	Network         network;
 	MQTTClient  client;
 	MQTTPacket_connectData  connectData;
@@ -159,12 +146,12 @@ typedef struct MQTT_AT_HANDLE_t {
 }
 MQTT_AT_HANDLE;
 
-extern void mqtt_main(void *param);
+void mqtt_main(void *param);
+void print_mqtt_at(void);
+void at_mqtt_init(void);
 
 extern MQTT_AT_HANDLE mqtt_at_handle;
 extern MQTTPacket_connectData mqtt_default_conn_data;
-
-extern void print_mqtt_at(void);
 
 extern int keepalive(MQTTClient *c);
 extern int sendPacket(MQTTClient *c, int length, Timer *timer);

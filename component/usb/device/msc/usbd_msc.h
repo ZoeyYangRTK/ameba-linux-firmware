@@ -33,8 +33,13 @@
 #define USBD_MSC_SN_STRING							"1234567890"
 
 /* MSC Endpoint parameters */
+#if defined (CONFIG_AMEBAGREEN2)
+#define USBD_MSC_BULK_IN_EP							0x82U  /* EP2 for BULK IN */
+#define USBD_MSC_BULK_OUT_EP						0x02U  /* EP2 for BULK OUT */
+#else
 #define USBD_MSC_BULK_IN_EP							0x81U  /* EP1 for BULK IN */
 #define USBD_MSC_BULK_OUT_EP						0x02U  /* EP2 for BULK OUT */
+#endif
 #define USBD_MSC_HS_MAX_PACKET_SIZE					512U   /* High speed BULK IN & OUT packet size */
 #define USBD_MSC_FS_MAX_PACKET_SIZE					64U    /* Full speed BULK IN & OUT packet size */
 
@@ -87,8 +92,6 @@
 #define USBD_MSC_SD_ACCESS_RETRY					3U
 
 typedef struct {
-	int(*disk_init)(void);
-	int(*disk_deinit)(void);
 	int(*disk_getcapacity)(u32 *sectors);
 	int(*disk_read)(u32 sector, u8 *buffer, u32 count);
 	int(*disk_write)(u32 sector, const u8 *buffer, u32 count);
@@ -130,31 +133,32 @@ typedef struct {
 } usbd_msc_cb_t;
 
 typedef struct {
-	u8 phase_error;
-	u8 is_open;
-	u8 ro;
-	u8 bot_state;
-	u8 bot_status;
-	u32 data_length;
-	u8 *data;
-	u8 *ctrl_buf;
-	usbd_msc_scsi_sense_data_t scsi_sense_data[USBD_MSC_SENSE_LIST_DEPTH];
-	u8 scsi_sense_head;
-	u8 scsi_sense_tail;
-	__IO u8 is_ready;
-	u32 num_sectors;
-	u32 lba; // logic block address
-	u32 blkbits; /* bits of logical block size of bound block device */
-	u32 blksize;
-	u32 blklen;
 	usbd_msc_cbw_t *cbw;
 	usbd_msc_csw_t *csw;
 	usbd_msc_disk_ops_t disk_ops;
 	usbd_msc_cb_t *cb;
 	usb_dev_t *dev;
+	usbd_msc_scsi_sense_data_t scsi_sense_data[USBD_MSC_SENSE_LIST_DEPTH];
+	u32 num_sectors;
+	u32 lba; // logic block address
+	u32 blkbits; /* bits of logical block size of bound block device */
+	u32 blksize;
+	u32 blklen;
+	u32 data_length;
+	u8 *data;
+	u8 *ctrl_buf;
+	u8 ro;
+	u8 bot_state;
+	u8 bot_status;
+	u8 scsi_sense_head;
+	u8 scsi_sense_tail;
+	__IO u8 is_ready : 1;
+	u8 is_open : 1;
+	u8 phase_error : 1;
 } usbd_msc_dev_t;
 
 int usbd_msc_init(usbd_msc_cb_t *cb);
 void usbd_msc_deinit(void);
-
+int usbd_msc_disk_init(void);
+int usbd_msc_disk_deinit(void);
 #endif // USBD_MSC_H

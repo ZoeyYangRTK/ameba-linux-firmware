@@ -5,12 +5,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "os_wrapper.h"
 #include "platform_stdlib.h"
 #include "basic_types.h"
 #include "audio/audio_service.h"
 #include "media/rtplayer.h"
 
 #include "example_player.h"
+
+#define MAX_URL_SIZE 1024
+static char g_url[MAX_URL_SIZE];
 
 enum PlayingStatus {
 	IDLE,
@@ -91,7 +95,7 @@ void OnError(const struct RTPlayerCallback *listener, const struct RTPlayer *pla
 	printf("OnError (%p %p), (%d, %d)\n", player, listener, error, extra);
 }
 
-void StartPlay(struct RTPlayer *player, char *url)
+void StartPlay(struct RTPlayer *player, const char *url)
 {
 	if (player == NULL) {
 		printf("start play fail, player is NULL!\n");
@@ -181,20 +185,33 @@ int player_test(const char *url)
 }
 
 #ifdef CMD_TEST
-#define MAX_URL_SIZE 1024
-void example_player_test_args_handle(u8  *argv[])
+void example_player_thread(void *param)
 {
-	char url[MAX_URL_SIZE];
+	(void) param;
+
+	printf("player test start......\n");
+
+	player_test(g_url);
+	rtos_time_delay_ms(1 * 1000);
+
+	printf("player test done......\n");
+	printf("\n\n");
+
+	rtos_task_delete(NULL);
+}
+
+void example_player_test_args_handle(char  *argv[])
+{
 	/* parse command line arguments */
 	while (*argv) {
 		if (strcmp(*argv, "-F") == 0) {
 			argv++;
 			if (*argv) {
-				memset(url, 0, MAX_URL_SIZE);
+				memset(g_url, 0, MAX_URL_SIZE);
 				if (!strncasecmp("http://", *argv, 7) || !strncasecmp("https://", *argv, 8)) {
-					snprintf(url, MAX_URL_SIZE, "%s", *argv);
+					snprintf(g_url, MAX_URL_SIZE, "%s", *argv);
 				} else {
-					snprintf(url, MAX_URL_SIZE, "%s", *argv);
+					snprintf(g_url, MAX_URL_SIZE, "%s", *argv);
 				}
 			}
 		}
@@ -202,12 +219,13 @@ void example_player_test_args_handle(u8  *argv[])
 			argv++;
 		}
 	}
-	printf("Usage: url is %s", url);
+	printf("Usage: url is %s", g_url);
 
 	printf("player test start......\n");
 
-	player_test(url);
-	rtos_time_delay_ms(1 * 1000);
+	if (rtos_task_create(NULL, ((const char *)"example_player_thread"), example_player_thread, NULL, 8 * 1024, 1) != SUCCESS) {
+		printf("\n\r%s rtos_task_create(example_player_thread) failed", __FUNCTION__);
+	}
 
 	printf("player test done......\n");
 	printf("\n\n");
@@ -218,10 +236,10 @@ void example_player_test_args_handle(u8  *argv[])
 u32 example_player_test(u16 argc, u8 *argv[])
 {
 	(void) argc;
-	example_player_test_args_handle(argv);
+	example_player_test_args_handle((char**)argv);
 	return _TRUE;
 }
-#endif
+#else
 
 void example_player_thread(void *param)
 {
@@ -240,7 +258,8 @@ void example_player_thread(void *param)
 
 void example_player(void)
 {
-	if (rtos_task_create(NULL, ((const char *)"example_player_thread"), example_player_thread, NULL, 160 * 1024, 1) != SUCCESS) {
+	if (rtos_task_create(NULL, ((const char *)"example_player_thread"), example_player_thread, NULL, 8 * 1024, 1) != SUCCESS) {
 		printf("\n\r%s rtos_task_create(example_player_thread) failed", __FUNCTION__);
 	}
 }
+#endif

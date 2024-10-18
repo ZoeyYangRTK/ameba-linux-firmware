@@ -13,6 +13,27 @@
  * limitations under the License.
  */
 
+/**
+ * @addtogroup Audio
+ * @{
+ *
+ * @brief Declares APIs for audio framework.
+ *
+ *
+ * @since 1.0
+ * @version 1.0
+ */
+
+/**
+ * @file audio_record.h
+ *
+ * @brief Provides APIs of the audio capture streaming.
+ *
+ *
+ * @since 1.0
+ * @version 1.0
+ */
+
 #ifndef AMEBA_FWK_MEDIA_AUDIO_AUDIOLITE_INTERFACES_AUDIO_AUDIO_RECORD_H
 #define AMEBA_FWK_MEDIA_AUDIO_AUDIOLITE_INTERFACES_AUDIO_AUDIO_RECORD_H
 
@@ -45,9 +66,9 @@ typedef struct {
 	uint32_t channel_count;
 	/** format of record
 	 * supports RTAUDIO_FORMAT_PCM_16_BIT, RTAUDIO_FORMAT_PCM_32_BIT,
-	 * RTAUDIO_FORMAT_PCM_24_BIT_PACKED, RTAUDIO_FORMAT_PCM_8_24_BIT*/
+	 * RTAUDIO_FORMAT_PCM_24_BIT, RTAUDIO_FORMAT_PCM_8_24_BIT*/
 	uint32_t format;
-	/** device of record, supports RTPIN_IN_MIC and RTPIN_IN_DMIC_REF_AMIC, RTPIN_IN_I2S*/
+	/** device of record, supports RTDEVICE_IN_MIC and RTDEVICE_IN_DMIC_REF_AMIC, RTDEVICE_IN_I2S*/
 	uint32_t device;
 	/** buffer bytes per one period of record*/
 	uint32_t buffer_bytes;
@@ -127,6 +148,19 @@ void RTAudioRecord_Destroy(struct RTAudioRecord *record);
  * @version 1.0
  */
 int32_t RTAudioRecord_Read(struct RTAudioRecord *record, void *buffer, size_t size, bool blocking);
+
+/**
+ * @brief Read audio data.
+ *
+ * @param record is the pointer of struct RTAudioRecord.
+ * @param buffer is the dst buffer of application.
+ * @param size is the dst buffer data bytes.
+ * @param time_out_ms set time_out_ms to audio framework, if read blocks for more than time_out_ms, it will return.
+ * @return size of data read, if timeout, return -ETIMEDOUT.
+ * @since 1.0
+ * @version 1.0
+ */
+int32_t RTAudioRecord_ReadTimeout(struct RTAudioRecord *record, void *buffer, size_t size, uint32_t time_out_ms);
 
 /**
  * @brief Get buffer bytes for record.

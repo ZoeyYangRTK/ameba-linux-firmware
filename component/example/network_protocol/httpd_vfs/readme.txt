@@ -21,7 +21,7 @@ Description
 Setup Guide
 ~~~~~~~~~~~
 		1. In project/realtek_ameba<test board>_va0_example/src/src_<ap core>/main.c "app_filesystem_init" interface, CONFIG vfs_type from VFS_FATFS to VFS_LITTLEFS:
-			ret = vfs_user_register("lfs", VFS_LITTLEFS, VFS_INF_FLASH, VFS_FLASH_R1, VFS_RW);
+			ret = vfs_user_register(VFS_PREFIX, VFS_LITTLEFS, VFS_INF_FLASH, VFS_REGION_1, VFS_RW);
 		2. If you want to enable captive portal, please modify dhcps.h.
 			#define CONFIG_ENABLE_CAPTIVE_PORTAL  1
 		3. GCC:use CMD "make all EXAMPLE=httpd_vfs" to compile httpd_vfs example.
@@ -29,11 +29,8 @@ Setup Guide
 				./mklittlefs -c html_demo/  -d 0 -b 4096 -p 1024 -s 131072 html.bin
 		   For AmebaDplus or AmebaLite, burn address is 0x08703000 and size is 128KB.
 		   For AmebaSmart, burn address is 0x08623000 and size is 128KB.
-		5. A httpd example thread is started automatically when booting, then you need to set board as ap with the following commands:
-			ATW3=SSID
-			ATW4=PASSWORD
-			ATW5=CHANNEL
-			ATWA
+		5. A httpd example thread is started automatically when booting, then you need to set board as ap with the following command:
+		   AT+WLSTARTAP=ssid,Test_AP,pw,12345678,sec,wpa2
 		6. Connect your device to board. 
 
 

@@ -108,6 +108,8 @@ u32 UnderFlowCnt = 0;
 u32 vo_freq;
 u32 LCDC_Show_Idx;
 
+int First_Flag_g = 1;
+
 /*initialize the MIPI IRQ info*/
 MIPI_IRQInfo MipiIrqInfo = {
 	.IrqNum = MIPI_DSI_IRQ,
@@ -129,7 +131,7 @@ LCDC_IRQInfo LcdcIrqInfo = {
  * Line Time  : 20us
  * Frame Rate : 60hz
  */
-static LCM_setting_table_t ST7701S_init_cmd_g[] = {/* DCS Write Long */
+static const LCM_setting_table_t ST7701S_init_cmd_g[] = {/* DCS Write Long */
 	/* ST7701S Reset Sequence */
 	/* LCD_Nreset (1); Delayms (1); */
 	/* LCD_Nreset (0); Delayms (1); */
@@ -299,14 +301,18 @@ void MipiDsi_ST7701S_isr(void)
 	if (reg_val & MIPI_BIT_ERROR) {
 		reg_dphy_err = MIPIx->MIPI_DPHY_ERR;
 		MIPIx->MIPI_DPHY_ERR = reg_dphy_err;
-		RTK_LOGE(TAG, "LPTX Error: 0x%lx, DPHY Error: 0x%lx\n", reg_val, reg_dphy_err);
+		if (First_Flag_g != 1) {
+			RTK_LOGE(TAG, "LPTX Error: 0x%lx, DPHY Error: 0x%lx\n", reg_val, reg_dphy_err);
+		}
 
 		if (MIPIx->MIPI_CONTENTION_DETECTOR_AND_STOPSTATE_DT & MIPI_MASK_DETECT_ENABLE) {
 			MIPIx->MIPI_CONTENTION_DETECTOR_AND_STOPSTATE_DT &= ~MIPI_MASK_DETECT_ENABLE;
 
 			MIPIx->MIPI_DPHY_ERR = reg_dphy_err;
 			MIPI_DSI_INTS_Clr(MIPIx, MIPI_BIT_ERROR);
-			RTK_LOGE(TAG, "LPTX Error CLR: 0x%lx, DPHY: 0x%lx\n", MIPIx->MIPI_INTS, MIPIx->MIPI_DPHY_ERR);
+			if (First_Flag_g != 1) {
+				RTK_LOGE(TAG, "LPTX Error CLR: 0x%lx, DPHY: 0x%lx\n", MIPIx->MIPI_INTS, MIPIx->MIPI_DPHY_ERR);
+			}
 		}
 
 		if (MIPIx->MIPI_DPHY_ERR == reg_dphy_err) {
@@ -325,7 +331,7 @@ void MipiDsi_ST7701S_isr(void)
 	}
 }
 
-void MipiDsi_ST7701S_Send_DCS(MIPI_TypeDef *MIPIx, u8 cmd, u8 payload_len, u8 *para_list)
+void MipiDsi_ST7701S_Send_DCS(MIPI_TypeDef *MIPIx, u8 cmd, u8 payload_len, const u8 *para_list)
 {
 	u32 word0, word1, addr, idx;
 	u8 cmd_addr[128];
@@ -357,12 +363,12 @@ void MipiDsi_ST7701S_Send_DCS(MIPI_TypeDef *MIPIx, u8 cmd, u8 payload_len, u8 *p
 	MIPI_DSI_CMD_Send(MIPIx, MIPI_DSI_DCS_LONG_WRITE, payload_len, 0);
 }
 
-void MipiDsi_ST7701S_Send_Cmd(MIPI_TypeDef *MIPIx, LCM_setting_table_t *table)
+void MipiDsi_ST7701S_Send_Cmd(MIPI_TypeDef *MIPIx, const LCM_setting_table_t *table)
 {
 	static u8 send_cmd_idx_s = 0;
 	u32 payload_len;
 	u8 cmd, send_flag = FALSE;
-	u8 *cmd_addr;
+	const u8 *cmd_addr;
 
 	while (1) {
 		cmd = table[send_cmd_idx_s].cmd;
@@ -375,6 +381,7 @@ void MipiDsi_ST7701S_Send_Cmd(MIPI_TypeDef *MIPIx, LCM_setting_table_t *table)
 			send_cmd_idx_s = 0;
 			RTK_LOGI(TAG, "LPTX CMD Send Done\n");
 			ST7701S_Init_Done_g = 1;
+			First_Flag_g = 0;
 			return;
 		default:
 			if (send_flag) {
@@ -391,7 +398,7 @@ void MipiDsi_ST7701S_Send_Cmd(MIPI_TypeDef *MIPIx, LCM_setting_table_t *table)
 	}
 }
 
-void MipiDsi_ST7701S_push_table(MIPI_TypeDef *MIPIx, MIPI_InitTypeDef *MIPI_InitStruct, LCM_setting_table_t *table)
+void MipiDsi_ST7701S_push_table(MIPI_TypeDef *MIPIx, MIPI_InitTypeDef *MIPI_InitStruct, const LCM_setting_table_t *table)
 {
 	MIPI_DSI_TO1_Set(MIPIx, DISABLE, 0);
 	MIPI_DSI_TO2_Set(MIPIx, ENABLE, 0x7FFFFFFF);

@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <osif.h>
-#include <log_service.h>
+#include <atcmd_service.h>
 
 #include <rtk_bt_def.h>
 #include <rtk_bt_common.h>
@@ -28,7 +28,7 @@ static int atcmd_ble_mesh_datatrnas_write(int argc, char **argv)
 	data_write.dst = str_to_int(argv[0]);
 	len = strlen(argv[1]);
 	if (len / 2 > DATA_TRANS_DATA_MAX_LEN) {
-		AT_PRINTK("[%s] The len %d of input data extend max value %d\r\n", __func__, len, DATA_TRANS_DATA_MAX_LEN);
+		BT_LOGE("[%s] The len %d of input data extend max value %d\r\n", __func__, len, DATA_TRANS_DATA_MAX_LEN);
 		return -2;
 	}
 	data_write.data_len = len / 2;
@@ -37,17 +37,17 @@ static int atcmd_ble_mesh_datatrnas_write(int argc, char **argv)
 		data_write.ack = str_to_int(argv[3]);
 		ret = rtk_bt_mesh_datatrans_model_write(&data_write);
 		if (ret) {
-			AT_PRINTK("[%s] Datatrans model write failed! reason: 0x%x", __func__, ret);
+			BT_LOGE("[%s] Datatrans model write failed! reason: 0x%x\r\n", __func__, ret);
 			return -1;
 		}
 		return 0;
 	} else {
-		AT_PRINTK("[%s] Input data format is not corrent.\r\n", __func__);
+		BT_LOGE("[%s] Input data format is not corrent.\r\n", __func__);
 		return -3;
 	}
 #else
 	(void)argv;
-	AT_PRINTK("[ATBC] Platform not support datatrans model.");
+	BT_LOGE("Platform not support datatrans model.\r\n");
 	return -1;
 #endif
 }
@@ -63,13 +63,13 @@ static int atcmd_ble_mesh_datatrans_read(int argc, char **argv)
 	data_read.app_key_index = str_to_int(argv[2]);
 	ret = rtk_bt_mesh_datatrans_model_read(&data_read);
 	if (ret) {
-		AT_PRINTK("[%s] Datatrans model read failed! reason: 0x%x", __func__, ret);
+		BT_LOGE("[%s] Datatrans model read failed! reason: 0x%x\r\n", __func__, ret);
 		return -1;
 	}
 	return 0;
 #else
 	(void)argv;
-	AT_PRINTK("[ATBC] Platform not support datatrans model.");
+	BT_LOGE("Platform not support datatrans model.\r\n");
 	return -1;
 #endif
 }
@@ -82,7 +82,6 @@ static const cmd_table_t mesh_datatrans_model_cmd_table[] = {
 
 int atcmd_bt_mesh_datatrans_model(int argc, char *argv[])
 {
-	atcmd_bt_excute(argc, argv, mesh_datatrans_model_cmd_table, "[ATBC][mesh_data]");
-	return 0;
+	return atcmd_bt_excute(argc, argv, mesh_datatrans_model_cmd_table, "[AT+BLEMESHDATA]");
 }
 #endif // end of RTK_BLE_MESH_SUPPORT

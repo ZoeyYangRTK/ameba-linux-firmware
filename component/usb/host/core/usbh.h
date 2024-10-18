@@ -128,15 +128,27 @@ typedef union {
 
 /* USB user configuration */
 typedef struct {
-	u8 pipes;									        /* Max host pipes used*/
-	u8 speed;											/* USB speed, USB_SPEED_HIGH, USB_SPEED_HIGH_IN_FULL or USB_SPEED_LOW */
-	u8 dma_enable;										/* Enable USB internal DMA mode, 0-Disable, 1-Enable */
 	u8 main_task_priority;								/* USB main thread priority */
 	u8 isr_task_priority;								/* USB ISR thread priority */
 	u8 alt_max;											/* USB support max alt setting num */
-	u32 rx_fifo_size;									/* RX FIFO size */
-	u32 nptx_fifo_size;									/* Non-Periodical TX FIFO size */
-	u32 ptx_fifo_size;									/* Periodical TX FIFO size */
+
+	u8 pipes : 4;										/* Max host pipes used, ch max 15 */
+	u8 speed : 2;										/* USB speed, USB_SPEED_HIGH, USB_SPEED_HIGH_IN_FULL or USB_SPEED_LOW 0~3*/
+	u8 dma_enable : 1;									/* Enable USB internal DMA mode, 0-Disable, 1-Enable */
+	/* 	For shared FIFO mode, e.g. AmabeD, AmebaSmart and AmebaDplus, the total DFIFO depth is 1016,
+		and it is shared by RxFIFO, NPTxFIFO and PTxFIFO.
+		This parameter specifies whether to assign a full PTxFIFO depth to support 1024 byte periodic transfer package size:
+			ptx_fifo_first = 0:
+				RxFIFO = 512
+				NPTxFIFO = 256
+				PTxFIFO = 248
+
+			ptx_fifo_first = 1:
+				RxFIFO = 504
+				NPTxFIFO = 256
+				PTxFIFO = 256  // Total DFIFO - RxFIFO - NPTxFIFO
+	*/
+	u8 ptx_fifo_first : 1;
 } usbh_config_t;
 
 struct _usb_host_t;
@@ -159,14 +171,16 @@ typedef struct {
 
 /* USB host */
 typedef struct _usb_host_t {
-	usbh_config_t         config;          				/* User configuration  */
-	__IO usbh_state_t     state;       					/* Host state */
-	__IO u32              tick;							/* Host timer tick */
-	u32                   class_num;					/* Registered class number */
 	usbh_class_driver_t  *class_driver[USBH_MAX_CLASSES_NUM];	/* Class drivers */
+	usbh_config_t         config;          				/* User configuration  */
+
 	usbh_class_driver_t  *active_class_driver;			/* Active class driver */
 	usbh_user_cb_t       *cb;							/* Host user callback */
 	void                 *private;						/* Host private data */
+
+	u32                   class_num;					/* Registered class number */
+	__IO u32              tick;							/* Host timer tick */
+	__IO usbh_state_t     state;						/* Host state */
 } usb_host_t;
 
 /* Exported macros -----------------------------------------------------------*/
@@ -219,6 +233,8 @@ usbh_if_desc_t *usbh_get_interface_descriptor(usb_host_t *host, u8 if_num, u8 al
 
 /* Get the interval value */
 u32 usbh_get_interval(usb_host_t *host, u8 ep_type, u8 binterval);
+/* Get the tick difference */
+u32 usbh_get_elapsed_ticks(usb_host_t *host, u32 tick);
 /* Get raw configuration descriptor data */
 u8 *usbh_get_raw_configuration_descriptor(usb_host_t *host);
 

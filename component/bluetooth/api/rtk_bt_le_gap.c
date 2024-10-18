@@ -197,6 +197,15 @@ uint16_t rtk_bt_le_gap_stop_adv(void)
 	return ret;
 }
 
+uint16_t rtk_bt_le_gap_get_adv_param(rtk_bt_le_adv_param_t *padv_param)
+{
+	uint16_t ret = 0;
+
+	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_GET_ADV_PARAM, padv_param, sizeof(rtk_bt_le_adv_param_t));
+
+	return ret;
+}
+
 bool rtk_bt_le_gap_adv_is_idle(void)
 {
 	uint16_t ret = 0;
@@ -604,6 +613,15 @@ uint16_t rtk_bt_le_gap_set_scan_param(rtk_bt_le_scan_param_t *p_gap_scan_param)
 	return ret;
 }
 
+uint16_t rtk_bt_le_gap_get_scan_param(rtk_bt_le_scan_param_t *pscan_param)
+{
+	uint16_t ret = 0;
+
+	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_GET_SCAN_PARAM, pscan_param, sizeof(rtk_bt_le_scan_param_t));
+
+	return ret;
+}
+
 uint16_t rtk_bt_le_gap_start_scan(void)
 {
 	uint16_t ret = 0;
@@ -623,7 +641,7 @@ uint16_t rtk_bt_le_gap_stop_scan(void)
 }
 
 #if defined(RTK_BLE_5_0_AE_SCAN_SUPPORT) && RTK_BLE_5_0_AE_SCAN_SUPPORT
-uint16_t rtk_bt_le_gap_ext_scan_set_param(rtk_bt_le_ext_scan_param_t *p_param)
+uint16_t rtk_bt_le_gap_set_ext_scan_param(rtk_bt_le_ext_scan_param_t *p_param)
 {
 	uint16_t ret = 0;
 
@@ -689,7 +707,7 @@ uint16_t rtk_bt_le_gap_ext_scan_set_param(rtk_bt_le_ext_scan_param_t *p_param)
 	return ret;
 }
 
-uint16_t rtk_bt_le_gap_ext_scan_start(void)
+uint16_t rtk_bt_le_gap_start_ext_scan(void)
 {
 	uint16_t ret = 0;
 
@@ -698,7 +716,7 @@ uint16_t rtk_bt_le_gap_ext_scan_start(void)
 	return ret;
 }
 
-uint16_t rtk_bt_le_gap_ext_scan_stop(void)
+uint16_t rtk_bt_le_gap_stop_ext_scan(void)
 {
 	uint16_t ret = 0;
 
@@ -1083,6 +1101,20 @@ uint16_t rtk_bt_le_gap_read_peer_resolv_addr(rtk_bt_le_ident_addr_type_t peer_id
 }
 #endif  /* RTK_BLE_PRIVACY_SUPPORT */
 
+uint16_t rtk_bt_le_sm_set_pairing_mode(rtk_bt_le_pairing_mode_t pairing_mode)
+{
+	uint16_t ret = 0;
+
+	if (pairing_mode > RTK_PAIRING_MODE_PAIRABLE) {
+		return RTK_BT_ERR_PARAM_INVALID;
+	}
+
+	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_SET_PAIRING_MODE,
+						  &pairing_mode, sizeof(pairing_mode));
+
+	return ret;
+}
+
 uint16_t rtk_bt_le_sm_set_security_param(rtk_bt_le_security_param_t *p_sec_param)
 {
 	uint16_t ret = 0;
@@ -1094,6 +1126,16 @@ uint16_t rtk_bt_le_sm_set_security_param(rtk_bt_le_security_param_t *p_sec_param
 	}
 
 	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_SET_SEC_PARAM,
+						  p_sec_param, sizeof(rtk_bt_le_security_param_t));
+
+	return ret;
+}
+
+uint16_t rtk_bt_le_sm_get_security_param(rtk_bt_le_security_param_t *p_sec_param)
+{
+	uint16_t ret = 0;
+
+	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_GET_SEC_PARAM,
 						  p_sec_param, sizeof(rtk_bt_le_security_param_t));
 
 	return ret;
@@ -1354,12 +1396,12 @@ uint16_t rtk_bt_le_gap_connless_cte_rx_start(uint8_t sync_id, rtk_bt_le_gap_conn
 	}
 
 	if (!RTK_BLE_GAP_CTE_SLOT_DURATION_VALUE_IN_RANGE(params->slot_durations)) {
-		API_PRINT("CTE rx param slot_durations=%u invalid\r\n", params->slot_durations);
+		BT_LOGD("CTE rx param slot_durations=%u invalid\r\n", params->slot_durations);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 
 	if (!RTK_BLE_GAP_CTE_MAX_SAMPLED_CTES_VALUE_IN_RANGE(params->max_sampled_ctes)) {
-		API_PRINT("CTE rx param max_sampled_ctes=%u invalid\r\n", params->max_sampled_ctes);
+		BT_LOGD("CTE rx param max_sampled_ctes=%u invalid\r\n", params->max_sampled_ctes);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 
@@ -1501,23 +1543,23 @@ static uint16_t rtk_bt_le_gap_connless_cte_tx_enable(uint8_t adv_handle, rtk_bt_
 	}
 
 	if (!RTK_BLE_GAP_CTE_LEN_VALUE_IN_RANGE(params->cte_len)) {
-		API_PRINT("CTE connectionless tx param cte_len=%u invalid\r\n", params->cte_len);
+		BT_LOGD("CTE connectionless tx param cte_len=%u invalid\r\n", params->cte_len);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 
 	if (!RTK_BLE_GAP_CTE_TYPE_VALUE_IN_RANGE(params->cte_type)) {
-		API_PRINT("CTE connectionless tx param cte_type=%u invalid\r\n", params->cte_type);
+		BT_LOGD("CTE connectionless tx param cte_type=%u invalid\r\n", params->cte_type);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 
 	if (!RTK_BLE_GAP_CTE_CNT_VALUE_IN_RANGE(params->cte_count)) {
-		API_PRINT("CTE connectionless tx param cte_count=%u invalid\r\n", params->cte_count);
+		BT_LOGD("CTE connectionless tx param cte_count=%u invalid\r\n", params->cte_count);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 
 	aod = (params->cte_type == RTK_BT_LE_GAP_CTE_TYPE_AOD_1US) || (params->cte_type == RTK_BT_LE_GAP_CTE_TYPE_AOD_2US);
 	if (aod && (!params->ant_ids || !RTK_BLE_GAP_CTE_NUM_ANT_IDS_VALUE_IN_RANGE(params->num_ant_ids))) {
-		API_PRINT("CTE connectionless tx param antenna invalid, num_ant_ids=%u, ant_ids=%p\r\n", params->num_ant_ids, params->ant_ids);
+		BT_LOGD("CTE connectionless tx param antenna invalid, num_ant_ids=%u, ant_ids=%08x\r\n", params->num_ant_ids, params->ant_ids);
 		return RTK_BT_ERR_PARAM_INVALID;
 	}
 
@@ -1554,21 +1596,21 @@ uint16_t rtk_bt_le_gap_connless_cte_tx_start(rtk_bt_le_gap_connless_cte_tx_param
 
 	ret = rtk_bt_le_gap_create_ext_adv(p_eadv_param, &adv_handle);
 	if (ret) {
-		API_PRINT("[LE GAP]Create eadv fail for connless CTE TX, ret=%u\r\n", ret);
+		BT_LOGD("[LE GAP]Create eadv fail for connless CTE TX, ret=%u\r\n", ret);
 		return ret;
 	}
 
 	p_pa_param->adv_handle = adv_handle;
 	ret = rtk_bt_le_gap_start_pa(p_pa_param);
 	if (ret) {
-		API_PRINT("[LE GAP]Start PA fail for connless CTE TX, ret=%u\r\n", ret);
+		BT_LOGD("[LE GAP]Start PA fail for connless CTE TX, ret=%u\r\n", ret);
 		rtk_bt_le_gap_remove_ext_adv(adv_handle);
 		return ret;
 	}
 
 	ret = rtk_bt_le_gap_connless_cte_tx_enable(adv_handle, p_cte_param);
 	if (ret) {
-		API_PRINT("[LE GAP]Enable CTE TX fail for connless CTE TX, ret=%u\r\n", ret);
+		BT_LOGD("[LE GAP]Enable CTE TX fail for connless CTE TX, ret=%u\r\n", ret);
 		rtk_bt_le_gap_stop_pa(adv_handle);
 		rtk_bt_le_gap_remove_ext_adv(adv_handle);
 		return ret;
@@ -1576,7 +1618,7 @@ uint16_t rtk_bt_le_gap_connless_cte_tx_start(rtk_bt_le_gap_connless_cte_tx_param
 
 	ret = rtk_bt_le_gap_start_ext_adv(adv_handle, 0, 0);
 	if (ret) {
-		API_PRINT("[LE GAP]Start eadv fail for connless CTE TX, ret=%u\r\n", ret);
+		BT_LOGD("[LE GAP]Start eadv fail for connless CTE TX, ret=%u\r\n", ret);
 		rtk_bt_le_gap_connless_cte_tx_disable(adv_handle);
 		rtk_bt_le_gap_stop_pa(adv_handle);
 		rtk_bt_le_gap_remove_ext_adv(adv_handle);
@@ -1602,3 +1644,119 @@ uint16_t rtk_bt_le_gap_connless_cte_tx_stop(uint8_t adv_handle)
 #endif /* RTK_BLE_5_0_AE_ADV_SUPPORT && RTK_BLE_5_0_PA_ADV_SUPPORT */
 
 #endif /* RTK_BLE_5_1_CTE_SUPPORT */
+
+#if defined(RTK_BLE_COC_SUPPORT) && RTK_BLE_COC_SUPPORT
+uint16_t rtk_bt_le_gap_coc_register_psm(uint8_t is_register, uint16_t le_psm)
+{
+	uint16_t ret = 0;
+
+	rtk_bt_le_coc_psm_reg_param_t param = {
+		.is_register = is_register,
+		.le_psm = le_psm,
+	};
+	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_COC_REG_PSM,
+						  &param, sizeof(rtk_bt_le_coc_psm_reg_param_t));
+	return ret;
+}
+
+uint16_t rtk_bt_le_gap_coc_set_psm_security(uint16_t le_psm, uint8_t active,
+											rtk_bt_le_coc_security_mode_t sec_mode,
+											uint8_t key_size)
+{
+	uint16_t ret = 0;
+
+	if (sec_mode > RTK_BT_LE_COC_SEC_AUTHOR) {
+		return RTK_BT_ERR_PARAM_INVALID;
+	}
+
+	rtk_bt_le_coc_set_psm_sec_param_t sec_param = {
+		.le_psm = le_psm,
+		.active = active,
+		.sec_mode = sec_mode,
+		.key_size = key_size,
+	};
+	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_COC_SET_PSM_SECURITY,
+						  &sec_param, sizeof(rtk_bt_le_coc_set_psm_sec_param_t));
+	return ret;
+}
+
+uint16_t rtk_bt_le_gap_coc_set_param(rtk_bt_le_coc_param_type_t param_type, uint16_t value)
+{
+	uint16_t ret = 0;
+
+	if (param_type > RTK_BT_LE_COC_PARAM_LOCAL_MTU) {
+		return RTK_BT_ERR_PARAM_INVALID;
+	}
+
+	rtk_bt_le_coc_param_set_t param = {
+		.param_type = param_type,
+		.value = value,
+	};
+	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_COC_SET_PARAM,
+						  &param, sizeof(rtk_bt_le_coc_param_set_t));
+	return ret;
+}
+
+uint16_t rtk_bt_le_gap_coc_get_chan_param(rtk_bt_le_coc_chan_param_type_t param_type,
+										  uint16_t cid, uint16_t *value)
+{
+	uint16_t ret = 0;
+
+	if (!value) {
+		return RTK_BT_ERR_POINTER_INVALID;
+	}
+
+	if (param_type > RTK_BT_LE_COC_CHAN_PARAM_MTU) {
+		return RTK_BT_ERR_PARAM_INVALID;
+	}
+
+	rtk_bt_le_coc_chan_param_get_t param = {
+		.param_type = param_type,
+		.cid = cid,
+		.value = value,
+	};
+	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_COC_GET_CHAN_PARAM,
+						  &param, sizeof(rtk_bt_le_coc_chan_param_get_t));
+	return ret;
+}
+
+uint16_t rtk_bt_le_gap_coc_connect(uint16_t conn_handle, uint16_t le_psm)
+{
+	uint16_t ret = 0;
+
+	rtk_bt_le_coc_connect_param_t param = {
+		.conn_handle = conn_handle,
+		.le_psm = le_psm,
+	};
+	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_COC_CONN,
+						  &param, sizeof(rtk_bt_le_coc_connect_param_t));
+	return ret;
+}
+
+uint16_t rtk_bt_le_gap_coc_disconnect(uint16_t cid)
+{
+	uint16_t ret = 0;
+
+	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_COC_DISCONN,
+						  &cid, sizeof(uint16_t));
+	return ret;
+}
+
+uint16_t rtk_bt_le_gap_coc_send_data(uint16_t cid, uint16_t len, uint8_t *data)
+{
+	uint16_t ret = 0;
+
+	if (!data) {
+		return RTK_BT_ERR_POINTER_INVALID;
+	}
+
+	rtk_bt_le_coc_send_data_param_t param = {
+		.cid = cid,
+		.len = len,
+		.data = data,
+	};
+	ret = rtk_bt_send_cmd(RTK_BT_LE_GP_GAP, RTK_BT_LE_GAP_ACT_COC_SEND_DATA,
+						  &param, sizeof(rtk_bt_le_coc_send_data_param_t));
+	return ret;
+}
+#endif

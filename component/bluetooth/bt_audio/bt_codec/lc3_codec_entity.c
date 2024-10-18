@@ -39,22 +39,6 @@ static struct audio_sample_option le_audio_sample_rate_tab[] = {
 	{0xFF, 0, false}
 };
 
-/* encode */
-TIMESENSITIVE_DATA_SECTION
-static struct lc3_encoder lc3_encode_buff[2] = {0};
-TIMESENSITIVE_DATA_SECTION
-static uint8_t lc3_encoder_input_buff[3840] = {0};
-TIMESENSITIVE_DATA_SECTION
-static uint8_t lc3_encoder_out_buff[1000] = {0};
-
-/* decode */
-TIMESENSITIVE_DATA_SECTION
-static struct lc3_decoder lc3_decode_buff[2] = {0};
-TIMESENSITIVE_DATA_SECTION
-static uint8_t lc3_decoder_input_buff[1000] = {0};
-TIMESENSITIVE_DATA_SECTION
-static uint8_t lc3_decoder_out_buff[3840] = {0};
-
 static int get_sample_rate(uint8_t sample_index)
 {
 	uint8_t i = 0;
@@ -63,14 +47,14 @@ static int get_sample_rate(uint8_t sample_index)
 	while (1) {
 		if (le_audio_sample_rate_tab[i].sample_rate_index == sample_index) {
 			if (!le_audio_sample_rate_tab[i].support_flag) {
-				printf("%s: !!!! lc3 codec not support srate %d \r\n", __func__, le_audio_sample_rate_tab[i].sample_rate);
+				BT_LOGE("%s: !!!! lc3 codec not support srate %d \r\n", __func__, le_audio_sample_rate_tab[i].sample_rate);
 			} else {
 				sample_rate = le_audio_sample_rate_tab[i].sample_rate;
 			}
 			break;
 		}
 		if (le_audio_sample_rate_tab[i].sample_rate_index == 0xFF) {
-			printf("%s: cannot find matched sample rate \r\n", __func__);
+			BT_LOGE("%s: cannot find matched sample rate \r\n", __func__);
 			break;
 		}
 		i++;
@@ -89,7 +73,7 @@ static uint32_t get_lea_chnl_num(uint32_t audio_channel_allocation)
 		audio_channel_allocation &= (audio_channel_allocation - 1);
 	}
 
-	//printf("%s audio_channel_allocation = 0x%x, channels=%d\r\n",__func__,(unsigned int)audio_channel_allocation,channels);
+	//BT_LOGE("%s audio_channel_allocation = 0x%x, channels=%d\r\n",__func__,(unsigned int)audio_channel_allocation,channels);
 	return channels;
 }
 
@@ -122,22 +106,26 @@ static bool private_lc3_codec_init(PAUDIO_CODEC_ENTITY p_entity, rtk_bt_le_audio
 	p_entity->lc3.bits_per_audio_sample_enc = 16;
 	p_entity->lc3.bits_per_audio_sample_dec = 16;
 	/* setup encoder handle */
-	for (uint8_t i = 0; i < 2; i ++) {
-		memset((void *)&lc3_encode_buff[i], 0, sizeof(struct lc3_encoder));
-	}
 	for (uint32_t ich = 0; ich < p_entity->lc3.channels; ich ++) {
-		p_codec_t->enc[ich] = lc3_setup_encoder(p_entity->lc3.frame_duration, p_entity->lc3.sample_rate, p_entity->lc3.sample_rate, (void *)&lc3_encode_buff[ich]);
+		void *p_mem = (void *)osif_mem_alloc(RAM_TYPE_DATA_ON, lc3_encoder_size(p_entity->lc3.frame_duration, p_entity->lc3.sample_rate));
+		if (!p_mem) {
+			goto fail;
+		}
+		p_codec_t->enc[ich] = lc3_setup_encoder(p_entity->lc3.frame_duration, p_entity->lc3.sample_rate, p_entity->lc3.sample_rate, p_mem);
 		if (!p_codec_t->enc[ich]) {
+			osif_mem_free(p_mem);
 			goto fail;
 		}
 	}
 	/* setup decoder handle */
-	for (uint8_t i = 0; i < 2; i ++) {
-		memset((void *)&lc3_decode_buff[i], 0, sizeof(struct lc3_decoder));
-	}
 	for (uint32_t ich = 0; ich < p_entity->lc3.channels; ich ++) {
-		p_codec_t->dec[ich] = lc3_setup_decoder(p_entity->lc3.frame_duration, p_entity->lc3.sample_rate, p_entity->lc3.sample_rate, (void *)&lc3_decode_buff[ich]);
+		void *p_mem = (void *)osif_mem_alloc(RAM_TYPE_DATA_ON, lc3_decoder_size(p_entity->lc3.frame_duration, p_entity->lc3.sample_rate));
+		if (!p_mem) {
+			goto fail;
+		}
+		p_codec_t->dec[ich] = lc3_setup_decoder(p_entity->lc3.frame_duration, p_entity->lc3.sample_rate, p_entity->lc3.sample_rate, p_mem);
 		if (!p_codec_t->dec[ich]) {
+			osif_mem_free(p_mem);
 			goto fail;
 		}
 	}
@@ -175,10 +163,10 @@ static void private_lc3_codec_deinit(PAUDIO_CODEC_ENTITY p_entity)
 	if (p_codec_t) {
 		for (uint32_t ich = 0; ich < p_entity->lc3.channels; ich ++) {
 			if (p_codec_t->enc[ich]) {
-				memset((void *)p_codec_t->enc[ich], 0, sizeof(struct lc3_encoder));
+				osif_mem_free(p_codec_t->enc[ich]);
 			}
 			if (p_codec_t->dec[ich]) {
-				memset((void *)p_codec_t->dec[ich], 0, sizeof(struct lc3_decoder));
+				osif_mem_free(p_codec_t->dec[ich]);
 			}
 		}
 		osif_mem_free(p_codec_t);
@@ -219,6 +207,7 @@ uint16_t lc3_decoder_process_data(void *p_entity, uint8_t *data, uint32_t size, 
 	PAUDIO_CODEC_ENTITY entity = (PAUDIO_CODEC_ENTITY)p_entity;
 	lc3_codec_t *p_codec_t = (lc3_codec_t *)entity->lc3.p_lc3_t;
 	enum lc3_pcm_format pcm_fmt = entity->lc3.bits_per_audio_sample_dec == 24 ? LC3_PCM_FORMAT_S24_3LE : LC3_PCM_FORMAT_S16;
+	void *pout = NULL;
 
 	/* caculate pcm per sample bytes */
 	pcm_sbytes = entity->lc3.bits_per_audio_sample_dec / 8;
@@ -232,18 +221,22 @@ uint16_t lc3_decoder_process_data(void *p_entity, uint8_t *data, uint32_t size, 
 	frame_bytes = entity->lc3.compress_bytes;
 #endif
 	if ((frame_bytes * entity->lc3.channels) > size) {
-		printf("%s: input lc3 data size (%d) is not matched with lc3 framesize (%d) \r\n", __func__, (int)size, frame_bytes);
+		BT_LOGE("%s: input lc3 data size (%d) is not matched with lc3 framesize (%d) \r\n", __func__, (int)size, frame_bytes);
 		return RTK_BT_AUDIO_FAIL;
-	} else {
-		memcpy((void *)lc3_decoder_input_buff, data, size);
+	}
+	/* allocate decode buffer */
+	pout = (void *)osif_mem_alloc(RAM_TYPE_DATA_ON, entity->lc3.channels * frame_samples * pcm_sbytes);
+	if (!pout) {
+		BT_LOGE("%s: allocate decode buffer fail \r\n", __func__);
+		return RTK_BT_AUDIO_FAIL;
 	}
 	/* --- Decoding loop --- */
 	for (uint32_t ich = 0; ich < entity->lc3.channels; ich ++) {
 		lc3_decode(p_codec_t->dec[ich],
-				   lc3_decoder_input_buff + ich * frame_bytes, frame_bytes,
-				   pcm_fmt, (void *)((uint8_t *)lc3_decoder_out_buff + ich * pcm_sbytes), entity->lc3.channels);
+				   data + ich * frame_bytes, frame_bytes,
+				   pcm_fmt, (void *)((uint8_t *)pout + ich * pcm_sbytes), entity->lc3.channels);
 	}
-	decode_buffer->pbuffer = (int16_t *)lc3_decoder_out_buff;
+	decode_buffer->pbuffer = pout;
 	decode_buffer->total_size = entity->lc3.channels * frame_samples * pcm_sbytes;
 	decode_buffer->actual_write_size = entity->lc3.channels * pcm_sbytes * frame_samples;
 	*ppcm_size = decode_buffer->actual_write_size;
@@ -261,6 +254,7 @@ uint16_t lc3_encoder_process_data(void *p_entity, int16_t *data, uint32_t size, 
 	enum lc3_pcm_format pcm_fmt =
 		entity->lc3.bits_per_audio_sample_enc == 32 ? LC3_PCM_FORMAT_S24 :
 		entity->lc3.bits_per_audio_sample_enc == 24 ? LC3_PCM_FORMAT_S24_3LE : LC3_PCM_FORMAT_S16;
+	void *pout = NULL;
 
 	/* caculate pcm per sample bytes */
 	pcm_sbytes = entity->lc3.bits_per_audio_sample_enc / 8;
@@ -274,22 +268,25 @@ uint16_t lc3_encoder_process_data(void *p_entity, int16_t *data, uint32_t size, 
 	frame_bytes = entity->lc3.compress_bytes;
 #endif
 	if ((entity->lc3.channels * pcm_sbytes * frame_samples) > size) {
-		printf("%s: input pcm data size (%d) is not matched with lc3 required (%d) \r\n", __func__, (int)size,
-			   (int)(entity->lc3.channels * pcm_sbytes * frame_samples));
+		BT_LOGE("%s: input pcm data size (%d) is not matched with lc3 required (%d) \r\n", __func__, (int)size,
+				(int)(entity->lc3.channels * pcm_sbytes * frame_samples));
 		return RTK_BT_AUDIO_FAIL;
-	} else {
-		memcpy((void *)lc3_encoder_input_buff, data, size);
 	}
-	// osif_lock();
+	/* allocate encode buffer */
+	pout = (void *)osif_mem_alloc(RAM_TYPE_DATA_ON, entity->lc3.channels * frame_bytes);
+	if (!pout) {
+		BT_LOGE("%s: allocate encode buffer fail \r\n", __func__);
+		return RTK_BT_AUDIO_FAIL;
+	}
 	/* --- Encoding loop --- */
 	for (uint32_t ich = 0; ich < entity->lc3.channels; ich ++) {
-		lc3_encode(p_codec_t->enc[ich], pcm_fmt, (void *)((uint8_t *)lc3_encoder_input_buff + ich * pcm_sbytes), entity->lc3.channels,
-				   frame_bytes, (void *)((uint8_t *)lc3_encoder_out_buff + ich * frame_bytes));
+		lc3_encode(p_codec_t->enc[ich], pcm_fmt, (void *)((uint8_t *)data + ich * pcm_sbytes), entity->lc3.channels,
+				   frame_bytes, (void *)((uint8_t *)pout + ich * frame_bytes));
 	}
 	// osif_unlock(0);
 	*p_actual_len = entity->lc3.channels * frame_bytes;
 	*p_frame_num = 1;
-	pencoder_buffer->pbuffer = (uint8_t *)lc3_encoder_out_buff;
+	pencoder_buffer->pbuffer = (uint8_t *)pout;
 	pencoder_buffer->frame_num = *p_frame_num;
 	pencoder_buffer->frame_size = *p_actual_len;
 
@@ -320,7 +317,7 @@ struct dec_codec_buffer *lc3_decoder_buffer_get(void *p_entity)
 
 	pdecoder_buffer = (struct dec_codec_buffer *)osif_mem_alloc(RAM_TYPE_DATA_ON, sizeof(struct dec_codec_buffer));
 	if (pdecoder_buffer == NULL) {
-		printf("%s:: allocate pbuffer fial \r\n", __func__);
+		BT_LOGE("%s:: allocate pbuffer fial \r\n", __func__);
 		return NULL;
 	}
 	pdecoder_buffer->pbuffer = NULL;
@@ -346,7 +343,7 @@ struct enc_codec_buffer *lc3_encoder_buffer_get(void *p_entity)
 
 	pencoder_buffer = (struct enc_codec_buffer *)osif_mem_alloc(RAM_TYPE_DATA_ON, sizeof(struct enc_codec_buffer));
 	if (pencoder_buffer == NULL) {
-		printf("%s: allocate pencoder_buffer fail \r\n", __func__);
+		BT_LOGE("%s: allocate pencoder_buffer fail \r\n", __func__);
 		return NULL;
 	}
 	pencoder_buffer->pbuffer = NULL;

@@ -7,12 +7,14 @@ include $(MAKE_INCLUDE_GEN)
 #*****************************************************************************#
 DIR = $(BASEDIR)/component/bluetooth/example
 BLE_AUDIO_COMMON_DIR = $(DIR)/ble_audio_common
+BLE_ISO_COMMON_DIR = $(DIR)/ble_iso
 MODULE_IFLAGS += -I$(BASEDIR)/component/at_cmd
 
 vpath %.c $(DIR)/bt_atcmd
 
 MODULE_IFLAGS += \
 	-I$(BLE_AUDIO_COMMON_DIR) \
+	-I$(BLE_ISO_COMMON_DIR) \
 	-I$(BASEDIR)/component/at_cmd
 
 CSRC += \
@@ -26,11 +28,14 @@ CSRC += \
 	$(DIR)/bt_atcmd/atcmd_bt_gatts.c \
 	$(DIR)/bt_atcmd/atcmd_bt_gattc.c \
 	$(DIR)/bt_atcmd/atcmd_bt_vendor.c \
+	$(DIR)/bt_atcmd/atcmd_bt_sdp.c \
 	$(DIR)/bt_atcmd/atcmd_bt_a2dp.c \
 	$(DIR)/bt_atcmd/atcmd_bt_avrcp.c \
 	$(DIR)/bt_atcmd/atcmd_bt_spp.c \
 	$(DIR)/bt_atcmd/atcmd_bt_hid.c \
 	$(DIR)/bt_atcmd/atcmd_bt_hfp.c \
+	$(DIR)/bt_atcmd/atcmd_bt_iso.c \
+	$(DIR)/bt_atcmd/atcmd_bt_pbap.c \
 	$(DIR)/bt_atcmd/atcmd_bt_bap.c \
 	$(DIR)/bt_atcmd/atcmd_bt_cap.c \
 	$(DIR)/bt_atcmd/atcmd_bt_pbp.c \

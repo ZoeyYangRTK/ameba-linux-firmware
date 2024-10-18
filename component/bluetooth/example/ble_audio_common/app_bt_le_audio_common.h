@@ -28,14 +28,6 @@ extern "C" {
 #define MAX(a, b) (a > b ? a : b)
 #endif
 #define CODEC_DFG_TEST 0
-#define BT_APP_PROCESS(func)            \
-    do {                                \
-        uint16_t __func_ret = func;     \
-        if (RTK_BT_OK != __func_ret) {  \
-            printf("[APP] %s failed! line: %d, err: 0x%x\r\n", __func__, __LINE__, __func_ret);   \
-            return -1;                  \
-        }                               \
-    } while (0)
 
 /* Define Audio channel.*/
 #define RTK_BT_LE_AUDIO_LEFT            1
@@ -86,7 +78,7 @@ extern "C" {
     If want to start 2-channels stereo audio in one CIS,please config:
     RTK_BLE_AUDIO_UNICAST_ONE_CIS_SETEO_MODE       to     1
 */
-#define RTK_BLE_AUDIO_UNICAST_ONE_CIS_SETEO_MODE            0
+#define RTK_BLE_AUDIO_UNICAST_ONE_CIS_SETEO_MODE            1
 
 /*
    Only apply in RTK_BT_LE_AUDIO_PLAY_MODE_CONVERSATION mode.
@@ -113,6 +105,9 @@ extern "C" {
 #define RTK_BLE_AUDIO_DEFAULT_PHY_CODED                     (4) /**< bit 2:LE Coded PHY used. */
 #define RTK_BLE_AUDIO_DEFAULT_CSIS_DISV_TIMEOUT             (10000)
 #define RTK_BLE_AUDIO_DEFAULT_BROADCAST_SOURCE_ADV_SID      0
+#define ISO_INTERVAL_10_MS                                  0x01
+#define ISO_INTERVAL_20_MS                                  0x02
+#define ISO_INTERVAL_30_MS                                  0x03
 /* Define broadcast audio announcement max length */
 #define RTK_LE_AUDIO_BROADCAST_AUDIO_ANNOUNCEMENT_LEN_MAX       100
 /* Define broadcast audio announcement default length */
@@ -120,6 +115,8 @@ extern "C" {
 /* Define default sample frequecy in source for audio test.*/
 #define LEA_SOURCE_FIX_SAMPLE_FREQUENCY                 RTK_BT_LE_SAMPLING_FREQUENCY_CFG_16K  //now support 8k,16k,24k,32k,48k birds sing array
 #define LEA_SOURCE_FIX_FRAME_DUARTION                   RTK_BT_LE_FRAME_DURATION_CFG_10_MS   //support 10ms and 7.5ms 
+#define LEA_BIG_ISO_INTERVAL_CONFIG                     ISO_INTERVAL_10_MS // if config 30ms, only support sample rate 48 KHz bis stereo mode
+#define LEA_CIG_ISO_INTERVAL_CONFIG                     ISO_INTERVAL_10_MS // now only support 10ms and 20ms
 
 #define RTK_BT_LE_MEDIA_AUDIO_CFG_SUPPORT (RTK_BT_LE_UNICAST_AUDIO_CFG_1_BIT |RTK_BT_LE_UNICAST_AUDIO_CFG_6_I_BIT | \
                                     RTK_BT_LE_UNICAST_AUDIO_CFG_6_II_BIT | RTK_BT_LE_UNICAST_AUDIO_CFG_4_BIT)
@@ -214,6 +211,13 @@ typedef struct {
 	rtk_bt_le_audio_cfg_codec_t codec;                          /**< @ref rtk_bt_le_audio_cfg_codec_t*/
 	uint32_t time_stamp;
 } app_lea_iso_data_path_t;
+
+typedef struct {
+	uint8_t tx_iso_path_num;
+	uint8_t rx_iso_path_num;
+	void *mtx;
+	struct list_head head;
+} app_lea_iso_data_path_list_t;
 
 typedef struct {
 	bool brs_is_used;
@@ -569,6 +573,7 @@ typedef struct {
 	uint8_t status;
 } app_bt_le_audio_commander_info_t;
 /*****************************************end cap commander struct***********************************/
+extern app_lea_iso_data_path_list_t g_app_lea_iso_path_list;
 extern rtk_bt_le_ext_scan_param_t app_lea_def_ext_scan_param;
 /* common broadcast source information parameter */
 extern app_bt_le_audio_bap_broadcast_source_info_t app_bap_bro_sour_info;
@@ -621,7 +626,6 @@ uint16_t app_bt_le_audio_device_list_remove(uint16_t conn_handle);
 uint16_t app_bt_le_audio_new_device_add_in_group(uint16_t conn_handle, rtk_bt_le_audio_group_handle_t *p_group_handle);
 rtk_bt_audio_track_t *app_bt_le_audio_track_add(rtk_bt_le_audio_cfg_codec_t *p_codec);
 uint16_t app_bt_le_audio_track_remove(void *audio_track_hdl);
-uint16_t app_bt_le_audio_track_recv_data(rtk_bt_audio_track_t *track_hdl, void *codec_entity, uint8_t *pdata, uint32_t len);
 void *app_bt_le_audio_lc3_codec_entity_add(rtk_bt_le_audio_cfg_codec_t *p_codec);
 uint16_t app_bt_le_audio_lc3_codec_entity_remove(void *codec_entity);
 rtk_bt_audio_record_t *app_bt_le_audio_record_add(rtk_bt_le_audio_cfg_codec_t *p_codec);

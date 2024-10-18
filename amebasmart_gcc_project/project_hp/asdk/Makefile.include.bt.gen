@@ -10,7 +10,8 @@ IFLAGS += \
 	-I$(BLEDIR)/driver/platform/amebasmart/inc \
 	-I$(BLEDIR)/osif \
 	-I$(BLEDIR)/bt_audio/include \
-	-I$(BLEDIR)/bt_audio/bt_codec
+	-I$(BLEDIR)/bt_audio/bt_codec \
+	-I$(BLEDIR)/bt_mp
 
 ifeq ($(CONFIG_BT_ZEPHYR), y)
 IFLAGS += \
@@ -18,6 +19,7 @@ IFLAGS += \
 	-I$(BLEDIR)/zephyr \
 	-I$(BLEDIR)/zephyr/hci_driver \
 	-I$(BLEDIR)/zephyr/include \
+	-I$(BLEDIR)/zephyr/stack \
 	-I$(BLEDIR)/zephyr/stack/host \
 	-I$(BLEDIR)/zephyr/settings \
 	-I$(BLEDIR)/zephyr/port
@@ -64,4 +66,5 @@ IFLAGS += \
 	-I$(BLEDIR)/api/include \
 	-I$(BLEDIR)/example/bt_atcmd \
 	-I$(BLEDIR)/example/gatt_service/server \
-	-I$(BLEDIR)/example/gatt_service/client
+	-I$(BLEDIR)/example/gatt_service/client \
+	-I$(BASEDIR)/component/at_cmd

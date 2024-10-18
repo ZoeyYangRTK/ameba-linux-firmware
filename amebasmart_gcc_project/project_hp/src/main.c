@@ -3,6 +3,7 @@
 #include "main.h"
 #include "vfs.h"
 #include "os_wrapper.h"
+#include "ameba_rtos_version.h"
 //#include "wifi_fast_connect.h"
 
 static const char *TAG = "MAIN";
@@ -152,7 +153,16 @@ void app_filesystem_init(void)
 #if defined(CONFIG_SINGLE_CORE_WIFI)
 	int ret = 0;
 	vfs_init();
-	ret = vfs_user_register("lfs", VFS_LITTLEFS, VFS_INF_FLASH, VFS_FLASH_R1, VFS_RW);
+#ifdef CONFIG_FATFS_WITHIN_APP_IMG
+	ret = vfs_user_register("fat", VFS_FATFS, VFS_INF_FLASH, VFS_REGION_2, VFS_RO);
+	if (ret == 0) {
+		RTK_LOGI(TAG, "VFS-FAT Init Success \n");
+	} else {
+		RTK_LOGI(TAG, "VFS-FAT Init Fail \n");
+	}
+#endif
+
+	ret = vfs_user_register(VFS_PREFIX, VFS_LITTLEFS, VFS_INF_FLASH, VFS_REGION_1, VFS_RW);
 	if (ret == 0) {
 		ret = rt_kv_init();
 		if (ret == 0) {
@@ -170,6 +180,7 @@ void app_filesystem_init(void)
 int main(void)
 {
 	RTK_LOGI(TAG, "KM4 MAIN \n");
+	ameba_rtos_get_version();
 
 	InterruptRegister(IPC_INTHandler, IPC_NP_IRQ, (u32)IPCNP_DEV, 5);
 	InterruptEn(IPC_NP_IRQ, 5);

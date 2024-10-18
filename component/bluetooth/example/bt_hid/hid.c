@@ -19,6 +19,7 @@
 #include <mouse_des.h>
 #include "kv.h"
 #include <dlist.h>
+#include <bt_utils.h>
 
 /* -------------------------------- Defines --------------------------------- */
 #define RTK_BT_DEV_NAME                      "RTK_BT_HID_DEVICE"
@@ -29,13 +30,6 @@
 #define DEFAULT_INQUIRYSCAN_INTERVAL         0x800 //0x1000
 /* ------------------------------- Company ID ------------------------------- */
 #define RTK_COMPANY_ID 0x005D
-
-#define BT_APP_PROCESS(process)                       \
-    if (RTK_BT_OK != process)                         \
-    {                                                 \
-        printf("[APP] %s failed!\r\n", __FUNCTION__); \
-        return -1;                                    \
-    }
 
 /* ------------------------------- Company ID ------------------------------- */
 
@@ -187,9 +181,12 @@ static rtk_bt_evt_cb_ret_t br_gap_app_callback(uint8_t evt_code, void *param, ui
 
 	case RTK_BT_BR_GAP_INQUIRY_RESULT: {
 		rtk_bt_br_inquiry_result_t *p_result = (rtk_bt_br_inquiry_result_t *)param;
-		printf("[BR GAP] Scan %02X:%02X:%02X:%02X:%02X:%02X Name %s \r\n",
-			   p_result->bd_addr[5], p_result->bd_addr[4], p_result->bd_addr[3], p_result->bd_addr[2], p_result->bd_addr[1], p_result->bd_addr[0],
-			   p_result->name);
+		BT_LOGA("[BR GAP] Scan %02x:%02x:%02x:%02x:%02x:%02x Name %s \r\n",
+				p_result->bd_addr[5], p_result->bd_addr[4], p_result->bd_addr[3], p_result->bd_addr[2], p_result->bd_addr[1], p_result->bd_addr[0],
+				p_result->name);
+		BT_AT_PRINT("+BRGAP:inquiry_result,%02x:%02x:%02x:%02x:%02x:%02x,%s\r\n",
+					p_result->bd_addr[5], p_result->bd_addr[4], p_result->bd_addr[3], p_result->bd_addr[2], p_result->bd_addr[1], p_result->bd_addr[0],
+					p_result->name);
 		break;
 	}
 
@@ -200,62 +197,96 @@ static rtk_bt_evt_cb_ret_t br_gap_app_callback(uint8_t evt_code, void *param, ui
 
 	case RTK_BT_BR_GAP_ACL_CONN_IND: {
 		uint8_t *bd_addr = (uint8_t *)param;
-		printf("[BR GAP] ACL connection indication %02X:%02X:%02X:%02X:%02X:%02X \r\n",
-			   bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
+		BT_LOGA("[BR GAP] ACL connection indication %02x:%02x:%02x:%02x:%02x:%02x \r\n",
+				bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
 		break;
 	}
 
 	case RTK_BT_BR_GAP_ACL_CONN_SUCCESS: {
 		uint8_t *bd_addr = (uint8_t *)param;
-		printf("[BR GAP] ACL connection success %02X:%02X:%02X:%02X:%02X:%02X \r\n",
-			   bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
+		BT_LOGA("[BR GAP] ACL connection success %02x:%02x:%02x:%02x:%02x:%02x \r\n",
+				bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
 		break;
 	}
 
 	case RTK_BT_BR_GAP_ACL_SNIFF: {
 		rtk_bt_br_acl_sniff_t *p_sniff = (rtk_bt_br_acl_sniff_t *)param;
-		printf("[BR GAP] ACL sniff mode from %02X:%02X:%02X:%02X:%02X:%02X \r\n",
-			   p_sniff->bd_addr[5], p_sniff->bd_addr[4],
-			   p_sniff->bd_addr[3], p_sniff->bd_addr[2],
-			   p_sniff->bd_addr[1], p_sniff->bd_addr[0]);
-		printf("[BR GAP] ACL sniff interval 0x%x \r\n", p_sniff->interval);
+		BT_LOGA("[BR GAP] ACL sniff mode from %02x:%02x:%02x:%02x:%02x:%02x \r\n",
+				p_sniff->bd_addr[5], p_sniff->bd_addr[4],
+				p_sniff->bd_addr[3], p_sniff->bd_addr[2],
+				p_sniff->bd_addr[1], p_sniff->bd_addr[0]);
+		BT_LOGA("[BR GAP] ACL sniff interval 0x%x \r\n", p_sniff->interval);
 		break;
 	}
 
 	case RTK_BT_BR_GAP_ACL_ACTIVE: {
 		uint8_t *bd_addr = (uint8_t *)param;
-		printf("[BR GAP] ACL active %02X:%02X:%02X:%02X:%02X:%02X \r\n",
-			   bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
+		BT_LOGA("[BR GAP] ACL active %02x:%02x:%02x:%02x:%02x:%02x \r\n",
+				bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
 		break;
 	}
 
 	case RTK_BT_BR_GAP_LINK_KEY_REQ: {
 		uint8_t found = *(uint8_t *)param;
-		printf("[BR GAP] Link Key Request received and found is 0x%x \r\n", found);
+		BT_LOGA("[BR GAP] Link Key Request received and found is 0x%x \r\n", found);
 		break;
 	}
 
 	case RTK_BT_BR_GAP_LINK_KEY_INFO: {
 		rtk_bt_br_bond_key_t *pbond_key_t = (rtk_bt_br_bond_key_t *)param;
 		uint8_t *bd_addr = pbond_key_t->bd_addr;
-		printf("[BR GAP] Set link key of %02X:%02X:%02X:%02X:%02X:%02X \r\n",
-			   bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
+		BT_LOGA("[BR GAP] Set link key of %02x:%02x:%02x:%02x:%02x:%02x \r\n",
+				bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
 		break;
 	}
 
 	case RTK_BT_BR_GAP_ACL_DISCONN: {
 		rtk_bt_br_acl_disc_t *p_acl_disc_event = (rtk_bt_br_acl_disc_t *)param;
-		printf("[BR GAP] ACL disconnection %02X:%02X:%02X:%02X:%02X:%02X \r\n",
-			   p_acl_disc_event->bd_addr[5], p_acl_disc_event->bd_addr[4],
-			   p_acl_disc_event->bd_addr[3], p_acl_disc_event->bd_addr[2],
-			   p_acl_disc_event->bd_addr[1], p_acl_disc_event->bd_addr[0]);
-		printf("[BR GAP] ACL disc cause 0x%x \r\n", p_acl_disc_event->cause);
+		BT_LOGA("[BR GAP] ACL disconnection %02x:%02x:%02x:%02x:%02x:%02x \r\n",
+				p_acl_disc_event->bd_addr[5], p_acl_disc_event->bd_addr[4],
+				p_acl_disc_event->bd_addr[3], p_acl_disc_event->bd_addr[2],
+				p_acl_disc_event->bd_addr[1], p_acl_disc_event->bd_addr[0]);
+		BT_LOGA("[BR GAP] ACL disc cause 0x%x \r\n", p_acl_disc_event->cause);
+		BT_AT_PRINT("+BRGAP:disc,%02x:%02x:%02x:%02x:%02x:%02x,0x%x\r\n",
+					p_acl_disc_event->bd_addr[5], p_acl_disc_event->bd_addr[4],
+					p_acl_disc_event->bd_addr[3], p_acl_disc_event->bd_addr[2],
+					p_acl_disc_event->bd_addr[1], p_acl_disc_event->bd_addr[0],
+					p_acl_disc_event->cause);
 		break;
 	}
 
 	default:
-		printf("%s, Unknown GAP RTK_BLE_EVT: %d\r\n", __func__, evt_code);
+		BT_LOGE("%s, Unknown GAP RTK_BLE_EVT: %d\r\n", __func__, evt_code);
 		break;
+	}
+
+	return RTK_BT_EVT_CB_OK;
+}
+
+static rtk_bt_evt_cb_ret_t rtk_bt_sdp_app_callback(uint8_t evt_code, void *param, uint32_t len)
+{
+	(void)len;
+
+	switch (evt_code) {
+	case RTK_BT_SDP_EVT_DID_ATTR_INFO: {
+		rtk_sdp_did_attr_info *p_info = (rtk_sdp_did_attr_info *)param;
+		BT_LOGA("[SDP] SDP DID ATTR %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+				p_info->bd_addr[5], p_info->bd_addr[4],
+				p_info->bd_addr[3], p_info->bd_addr[2],
+				p_info->bd_addr[1], p_info->bd_addr[0]);
+		BT_LOGA("[SDP] specific_id 0x%04x, vendor_id 0x%04x, vendor_src 0x%04x, product_id 0x%04x, version 0x%04x \r\n",
+				p_info->specific_id,
+				p_info->vendor_id,
+				p_info->vendor_src,
+				p_info->product_id,
+				p_info->version);
+		break;
+	}
+
+	default: {
+		BT_LOGE("%s, Unknown SDP RTK_BLE_EVT: %d\r\n", __func__, evt_code);
+		break;
+	}
 	}
 
 	return RTK_BT_EVT_CB_OK;
@@ -269,28 +300,30 @@ static rtk_bt_evt_cb_ret_t rtk_bt_hid_app_callback(uint8_t evt_code, void *param
 	switch (evt_code) {
 	case RTK_BT_HID_EVT_CONN_IND: {
 		memcpy((void *)bd_addr, param, 6);
-		printf("[HID] Receive HID connection from %02X:%02X:%02X:%02X:%02X:%02X\r\n",
-			   bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
+		BT_LOGA("[HID] Receive HID connection from %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+				bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
 		break;
 	}
 
 	case RTK_BT_HID_EVT_CONN_CMPL: {
 		memcpy((void *)bd_addr, param, 6);
-		printf("[HID] Receive HID connection complete from %02X:%02X:%02X:%02X:%02X:%02X\r\n",
-			   bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
+		BT_LOGA("[HID] Receive HID connection complete from %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+				bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0]);
 		break;
 	}
 
 	case RTK_BT_HID_EVT_DISCONN_CMPL: {
 		rtk_bt_hid_disconn_ind_t *p_ind_t = (rtk_bt_hid_disconn_ind_t *)param;
 		memcpy((void *)bd_addr, p_ind_t->bd_addr, 6);
-		printf("[HID] Receive HID connection from %02X:%02X:%02X:%02X:%02X:%02X, cause 0x%x \r\n",
-			   bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0], p_ind_t->cause);
+		BT_LOGA("[HID] HID disconnection completion with %02x:%02x:%02x:%02x:%02x:%02x, cause 0x%x \r\n",
+				bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0], p_ind_t->cause);
+		BT_AT_PRINT("+BTHID:disconn,%02x:%02x:%02x:%02x:%02x:%02x,0x%x\r\n",
+					bd_addr[5], bd_addr[4], bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0], p_ind_t->cause);
 		break;
 	}
 
 	default: {
-		printf("%s, Unknown HID RTK_BLE_EVT: %d\r\n", __func__, evt_code);
+		BT_LOGE("%s, Unknown HID RTK_BLE_EVT: %d\r\n", __func__, evt_code);
 		break;
 	}
 	}
@@ -304,7 +337,7 @@ uint16_t rtk_bt_hid_gamepad_control(rtk_bt_hid_gamepad_report_t *pgamepad_t)
 	rtk_bt_hid_input_data_t data_t = {0};
 
 	if (!pgamepad_t) {
-		printf("[HID] %s: input param is NULL \r\n", __func__);
+		BT_LOGE("[HID] %s: input param is NULL \r\n", __func__);
 		return 1;
 	}
 
@@ -324,7 +357,7 @@ uint16_t rtk_bt_hid_mouse_control(rtk_bt_hid_mouse_report_t *pmouse_t)
 	rtk_bt_hid_input_data_t data_t = {0};
 
 	if (!pmouse_t) {
-		printf("[HID] %s: input param is NULL \r\n", __func__);
+		BT_LOGE("[HID] %s: input param is NULL \r\n", __func__);
 		return 1;
 	}
 
@@ -352,7 +385,7 @@ int bt_hid_main(uint8_t role, uint8_t enable)
 
 	if (1 == enable) {
 		if (hid_demo_init_flag) {
-			printf("%s Already init! \r\n", __func__);
+			BT_LOGE("%s Already init! \r\n", __func__);
 			return -1;
 		}
 
@@ -390,7 +423,7 @@ int bt_hid_main(uint8_t role, uint8_t enable)
 			BT_APP_PROCESS(rtk_hid_descriptor_add((void *)hid_descriptor_mouse_boot_mode, mouse_hid_descriptor_size));
 			hid_demo_role = RTK_BT_HID_ROLE_MOUSE;
 		} else {
-			printf("[APP] Wrong HID role %d \r\n", role);
+			BT_LOGE("[APP] Wrong HID role %d \r\n", role);
 			return 1;
 		}
 		/* Enable BT */
@@ -399,7 +432,7 @@ int bt_hid_main(uint8_t role, uint8_t enable)
 
 		BT_APP_PROCESS(rtk_bt_br_gap_get_bd_addr(&bd_addr));
 		rtk_bt_br_addr_to_str(bd_addr.addr, addr_str, sizeof(addr_str));
-		printf("[APP] BD_ADDR: %s\r\n", addr_str);
+		BT_LOGA("[APP] BD_ADDR: %s\r\n", addr_str);
 
 		/* Initilize GAP part */
 		BT_APP_PROCESS(rtk_bt_evt_register_callback(RTK_BT_BR_GP_GAP, br_gap_app_callback));
@@ -407,17 +440,19 @@ int bt_hid_main(uint8_t role, uint8_t enable)
 		strcpy(dev_name, RTK_BT_DEV_NAME);
 		snprintf(&dev_name[strlen(RTK_BT_DEV_NAME)], 7, "(%02X%02X)", bd_addr.addr[1], bd_addr.addr[0]);
 		BT_APP_PROCESS(rtk_bt_br_gap_set_device_name((const uint8_t *)dev_name));
-
-		/* Initilize avrcp part */
+		/* Initilize SDP part */
+		BT_APP_PROCESS(rtk_bt_evt_register_callback(RTK_BT_BR_GP_SDP, rtk_bt_sdp_app_callback));
+		/* Initilize hid part */
 		BT_APP_PROCESS(rtk_bt_evt_register_callback(RTK_BT_BR_GP_HID, rtk_bt_hid_app_callback));
 
 		hid_demo_init_flag = 1;
 	} else if (0 == enable) {
 		if (!hid_demo_init_flag) {
-			printf("%s No need deinit! \r\n", __func__);
+			BT_LOGE("%s No need deinit! \r\n", __func__);
 			return -1;
 		}
 		BT_APP_PROCESS(rtk_bt_evt_unregister_callback(RTK_BT_BR_GP_GAP));
+		BT_APP_PROCESS(rtk_bt_evt_unregister_callback(RTK_BT_BR_GP_SDP));
 		BT_APP_PROCESS(rtk_bt_evt_unregister_callback(RTK_BT_BR_GP_HID));
 		/* Disable BT */
 		BT_APP_PROCESS(rtk_bt_disable());

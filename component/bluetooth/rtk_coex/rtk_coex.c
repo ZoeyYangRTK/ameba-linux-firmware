@@ -10,7 +10,7 @@
 #include "rtk_coex.h"
 
 #if defined(HCI_BT_COEX_ENABLE) && HCI_BT_COEX_ENABLE
-
+extern void wifi_btcoex_bt_hci_notify(uint8_t *pdata, uint16_t len, uint8_t dir);
 #if defined(HCI_BT_COEX_SW_MAILBOX) && HCI_BT_COEX_SW_MAILBOX
 
 void bt_coex_init(void)
@@ -65,20 +65,6 @@ static rtk_bt_coex_conn_t  *bt_coex_find_link_by_handle(uint16_t conn_handle)
 	}
 }
 
-/*static void bt_coex_dbg_dump(uint8_t *pbuf, uint32_t len)
-{
-    uint32_t i = 0;
-
-    printf("bt_coex_dbg_dump: length = 0x%lx  \r\n",len);
-    for(i=0;i<len;i++){
-        printf("0x%x   ",pbuf[i]);
-        if((i+1)%16 == 0)
-            printf("\r\n");
-    }
-
-    printf("\r\n");
-}*/
-
 static void bt_coex_send_vendor_cmd(uint8_t *pbuf, uint8_t len)
 {
 	DBG_BT_COEX("bt_coex_send_vendor_cmd -----> \r\n");
@@ -89,11 +75,7 @@ static void bt_coex_send_vendor_cmd(uint8_t *pbuf, uint8_t len)
 	pbuf[3] = len - 4;
 
 	DBG_BT_COEX("bt_coex_send_vendor_cmd: len = %d\r\n", len);
-	DBG_BT_COEX("bt_coex_send_vendor_cmd: pbuf = ");
-	for (uint8_t i = 0; i < len; i++) {
-		DBG_BT_COEX("0x%02x ", *(pbuf + i));
-	}
-	DBG_BT_COEX("\r\n");
+	DBG_BT_COEX_DUMP("bt_coex_send_vendor_cmd: pbuf = ", pbuf, len);
 
 	hci_if_write_internal(pbuf, len);
 
@@ -158,7 +140,7 @@ static void bt_coex_set_profile_info_to_fw(void)
 		}
 	}
 
-	//bt_coex_dbg_dump(pbuf, offset + 4);
+	//BT_DUMPA("", pbuf, offset + 4);
 
 	bt_coex_send_vendor_cmd(pbuf, offset + 4);
 
@@ -275,7 +257,7 @@ static void bt_coex_handle_connection_complet_evt(uint8_t *p_evt_data)
 	}
 
 	conn_handle = (uint16_t)((p_evt_data[2] << 8) | p_evt_data[1]);
-	DBG_BT_COEX("bt_coex_handle_connection_complet_evt: conn_handle = 0x%02X \r\n", conn_handle);
+	DBG_BT_COEX("bt_coex_handle_connection_complet_evt: conn_handle = 0x%02x \r\n", conn_handle);
 
 	p_conn = bt_coex_find_link_by_handle(conn_handle);
 
@@ -922,21 +904,10 @@ static void bt_coex_packet_counter_handle(rtk_bt_coex_conn_t *p_conn, uint16_t c
 
 void bt_coex_dump_frame(uint8_t *pdata, uint32_t len)
 {
-#if defined(CONFIG_BT_COEX_DEBUG) && CONFIG_BT_COEX_DEBUG
-	uint32_t i = 0;
-
-	printf("dump frame: len = 0x%lx \r\n", len);
-	for (i = 0; i < len; i++) {
-		printf("0x%x  ", pdata[i]);
-		if ((i + 1) % 16 == 0) {
-			printf("\r\n");
-		}
-	}
-	printf("\r\n");
-#else
 	(void)pdata;
 	(void)len;
-#endif
+	DBG_BT_COEX("dump frame: len = 0x%x \r\n", len);
+	DBG_BT_COEX_DUMP("", pdata, len);
 }
 
 static void bt_coex_process_acl_data(uint8_t *pdata, uint16_t len, uint8_t dir)
@@ -1027,7 +998,7 @@ static void bt_coex_monitor_timer_handler(void *arg)
 
 			if (p_monitor->profile_idx == PROFILE_A2DP) {
 
-				DBG_BT_COEX("bt_coex_monitor_timer_handler: a2dp cnt = 0x%lx \r\n", p_conn->a2dp_cnt);
+				DBG_BT_COEX("bt_coex_monitor_timer_handler: a2dp cnt = %d \r\n", p_conn->a2dp_cnt);
 
 				if ((p_conn->a2dp_cnt == 0) && (p_conn->a2dp_pre_cnt > 0)) {
 					p_conn->profile_status_bitmap &= (~BIT(PROFILE_A2DP));
@@ -1056,6 +1027,51 @@ static void bt_coex_monitor_timer_handler(void *arg)
 	}
 }
 
+void bt_coex_evt_notify(uint8_t *pdata, uint16_t len)
+{
+	uint8_t evt = pdata[0];
+	bool need_notify = FALSE;
+	switch (evt) {
+	case HCI_EV_LE_META: {
+		uint8_t sub_evt = pdata[2];
+		switch (sub_evt) {
+		case HCI_EV_LE_CONN_COMPLETE:
+		case HCI_EV_LE_ENHANCED_CONN_COMPLETE:
+		case HCI_EV_LE_CONN_UPDATE_COMPLETE:
+			need_notify = TRUE;
+			break;
+		default:
+			break;
+		}
+	}
+	break;
+	case HCI_EV_DISCONN_COMPLETE:
+		need_notify = TRUE;
+		break;
+	default:
+		break;
+	}
+	if (need_notify == TRUE) {
+		wifi_btcoex_bt_hci_notify(pdata, len, DIR_IN);
+	}
+}
+void bt_coex_cmd_notify(uint8_t *pdata, uint16_t len)
+{
+	uint16_t opcode;
+	opcode = (uint16_t)((pdata[1] << 8) | pdata[0]);
+	switch (opcode) {
+	case BT_HCI_OP_LE_SET_SCAN_PARAM:
+	case BT_HCI_OP_LE_SET_EX_SCAN_PARAM:
+	case BT_HCI_OP_BR_WR_SCAN_ENABLE:
+	case BT_HCI_OP_BR_WR_PAGE_SCAN_ACTIVITY:
+	case BT_HCI_OP_BR_WR_INQ_SCAN_ACTIVITY:
+	case BT_HCI_OP_LE_CREATE_CONNECTION:
+		wifi_btcoex_bt_hci_notify(pdata, len, DIR_OUT);
+		break;
+	default:
+		break;
+	}
+}
 void bt_coex_process_rx_frame(uint8_t type, uint8_t *pdata, uint16_t len)
 {
 	if (!pdata) {
@@ -1064,6 +1080,7 @@ void bt_coex_process_rx_frame(uint8_t type, uint8_t *pdata, uint16_t len)
 
 	if (type == HCI_EVT) {
 		bt_coex_process_evt(pdata);
+		bt_coex_evt_notify(pdata, len);
 	}
 
 	if (type == HCI_ACL) {
@@ -1079,6 +1096,9 @@ void bt_coex_process_tx_frame(uint8_t type, uint8_t *pdata, uint16_t len)
 
 	if (type == HCI_ACL) {
 		bt_coex_process_acl_data(pdata, len, DIR_OUT);
+	}
+	if (type == HCI_CMD) {
+		bt_coex_cmd_notify(pdata, len);
 	}
 }
 
